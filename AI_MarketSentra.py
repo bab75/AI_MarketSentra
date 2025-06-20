@@ -250,6 +250,13 @@ def display_data_analysis():
         
         # Display data range information at the top
         try:
+            # Validate data
+            if not isinstance(data, pd.DataFrame) or data.empty:
+                raise ValueError("Processed data is invalid or empty")
+            if not isinstance(data.index, pd.DatetimeIndex):
+                raise ValueError("Data index must be a DatetimeIndex")
+                
+            # Calculate date range
             start_ts = pd.Timestamp(data.index.min())
             end_ts = pd.Timestamp(data.index.max())
             total_years = (end_ts - start_ts).days / 365.25
@@ -257,17 +264,32 @@ def display_data_analysis():
             end_date_full = end_ts.strftime('%b %Y')
             
             with st.expander("📊 Data Range Information", expanded=True):
-                # Get full historical range for display
-                    if st.session_state.symbol:
-                        full_range = data_loader.get_full_historical_range(st.session_state.symbol)
-                        if full_range:
-                          st.info(f"📅**History Data available from**: {full_range['start_date'].strftime('%Y-%m-%d')} to {full_range['end_date'].strftime('%Y-%m-%d')}")
-                st.info(f"📅 **Historical data available:** {start_date_full} to {end_date_full} ({total_years:.1f}+ years)")
-                st.info(f"📊 **Selected period:** {start_date_full} to {end_date_full}")
-        except Exception:
-            with st.expander("📊 Data Range Information", expanded=True):
-                st.info(f"📅 **Data loaded successfully:** {len(data)} records")
+                # Full historical range (if symbol is available)
+                if st.session_state.symbol:
+                    full_range = data_loader.get_full_historical_range(st.session_state.symbol)
+                    if full_range:
+                        st.info(
+                            f"📅 **Full History Available**: {full_range['start_date'].strftime('%Y-%m-%d')} to "
+                            f"{full_range['end_date'].strftime('%Y-%m-%d')} ({full_range['total_records']:,} records)"
+                        )
+                # Loaded data range
+                st.info(
+                    f"📅 **Loaded Data Range**: {start_ts.strftime('%Y-%m-%d')} to {end_ts.strftime('%Y-%m-%d')} "
+                    f"({len(data):,} records, {total_years:.1f} years)"
+                )
+                # Selected period (same as loaded for consistency)
+                st.info(
+                    f"📊 **Selected Period**: {start_date_full} to {end_date_full} ({total_years:.1f} years)"
+                )
                 
+        except ValueError as e:
+            with st.expander("📊 Data Range Information", expanded=True):
+                st.error(f"⚠️ **Data Loading Error**: {str(e)}")
+                st.info("📅 Please ensure valid historical data is loaded.")
+        except Exception as e:
+            with st.expander("📊 Data Range Information", expanded=True):
+                st.error(f"⚠️ **Unexpected Error**: {str(e)}")
+                st.info("📅 Contact support or check data source (e.g., yfinance).")
         
         # Create tabs for different analyses
         tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([

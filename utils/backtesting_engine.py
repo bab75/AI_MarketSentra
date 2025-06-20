@@ -135,6 +135,8 @@ class BacktestingEngine:
         signals['Position'] = 1  # Always long
         signals['Signal'] = 0
         signals.iloc[0, signals.columns.get_loc('Signal')] = 1  # Buy signal at start
+        # Add sell signal at the very end to realize gains
+        signals.iloc[-1, signals.columns.get_loc('Signal')] = -1  # Sell signal at end
         return signals
     
     def _moving_average_strategy(self, data: pd.DataFrame, params: Dict) -> pd.DataFrame:
@@ -256,6 +258,14 @@ class BacktestingEngine:
         portfolio['Total'] = float(self.initial_capital)
         portfolio['Returns'] = 0.0
         
+        # Initialize first position if there's a buy signal at start
+        if signals['Signal'].iloc[0] > 0:
+            shares_to_buy = (portfolio['Cash'].iloc[0] * (1 - self.transaction_cost)) // portfolio['Price'].iloc[0]
+            cost = shares_to_buy * portfolio['Price'].iloc[0] * (1 + self.transaction_cost)
+            portfolio.iloc[0, portfolio.columns.get_loc('Holdings')] = shares_to_buy
+            portfolio.iloc[0, portfolio.columns.get_loc('Cash')] = self.initial_capital - cost
+            portfolio.iloc[0, portfolio.columns.get_loc('Total')] = portfolio['Cash'].iloc[0] + portfolio['Holdings'].iloc[0] * portfolio['Price'].iloc[0]
+        
         for i in range(1, len(portfolio)):
             # Check for position changes
             if signals['Signal'].iloc[i] != 0:
@@ -264,7 +274,7 @@ class BacktestingEngine:
                     shares_to_buy = (portfolio['Cash'].iloc[i-1] * (1 - self.transaction_cost)) // portfolio['Price'].iloc[i]
                     cost = shares_to_buy * portfolio['Price'].iloc[i] * (1 + self.transaction_cost)
                     
-                    portfolio.iloc[i, portfolio.columns.get_loc('Holdings')] = shares_to_buy
+                    portfolio.iloc[i, portfolio.columns.get_loc('Holdings')] = portfolio['Holdings'].iloc[i-1] + shares_to_buy
                     portfolio.iloc[i, portfolio.columns.get_loc('Cash')] = portfolio['Cash'].iloc[i-1] - cost
                     
                 elif signals['Signal'].iloc[i] < 0:  # Sell signal

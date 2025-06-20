@@ -243,12 +243,12 @@ def display_data_analysis():
             end_date_full = end_ts.strftime('%b %Y')
             
             with st.expander("📊 Data Range Information", expanded=True):
-                st.info(f"📅**History Data available from**: {history.index[0].strftime('%Y-%m-%d')} to {history.index[-1].strftime('%Y-%m-%d')}")
                 st.info(f"📅 **Historical data available:** {start_date_full} to {end_date_full} ({total_years:.1f}+ years)")
                 st.info(f"📊 **Selected period:** {start_date_full} to {end_date_full}")
         except Exception:
             with st.expander("📊 Data Range Information", expanded=True):
                 st.info(f"📅 **Data loaded successfully:** {len(data)} records")
+                st.info(f"📅**History Data available from**: {history.index[0].strftime('%Y-%m-%d')} to {history.index[-1].strftime('%Y-%m-%d')}")
         
         # Create tabs for different analyses
         tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([

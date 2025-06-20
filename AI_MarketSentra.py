@@ -261,7 +261,7 @@ def display_data_analysis():
                     if st.session_state.symbol:
                         full_range = data_loader.get_full_historical_range(st.session_state.symbol)
                         if full_range:
-                st.info(f"📅**History Data available from**: {full_range['start_date'].strftime('%Y-%m-%d')} to {full_range['end_date'].strftime('%Y-%m-%d')}")
+                          st.info(f"📅**History Data available from**: {full_range['start_date'].strftime('%Y-%m-%d')} to {full_range['end_date'].strftime('%Y-%m-%d')}")
                 st.info(f"📅 **Historical data available:** {start_date_full} to {end_date_full} ({total_years:.1f}+ years)")
                 st.info(f"📊 **Selected period:** {start_date_full} to {end_date_full}")
         except Exception:

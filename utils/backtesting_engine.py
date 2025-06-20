@@ -50,6 +50,20 @@ class BacktestingEngine:
                 signals = self._macd_strategy(data, strategy_config['params'])
             elif strategy_type == 'momentum':
                 signals = self._momentum_strategy(data, strategy_config['params'])
+            elif strategy_type == 'stochastic':
+                signals = self._stochastic_strategy(data, strategy_config['params'])
+            elif strategy_type == 'williams_r':
+                signals = self._williams_r_strategy(data, strategy_config['params'])
+            elif strategy_type == 'atr_reversion':
+                signals = self._atr_reversion_strategy(data, strategy_config['params'])
+            elif strategy_type == 'triple_ma':
+                signals = self._triple_ma_strategy(data, strategy_config['params'])
+            elif strategy_type == 'volume_breakout':
+                signals = self._volume_breakout_strategy(data, strategy_config['params'])
+            elif strategy_type == 'support_resistance':
+                signals = self._support_resistance_strategy(data, strategy_config['params'])
+            elif strategy_type == 'channel_breakout':
+                signals = self._channel_breakout_strategy(data, strategy_config['params'])
             else:
                 raise ValueError(f"Unknown strategy type: {strategy_type}")
             
@@ -491,21 +505,229 @@ class BacktestingEngine:
                 'params': {'period': 14, 'oversold': 25, 'overbought': 75}
             },
             {
-                'name': 'Bollinger Bands',
+                'name': 'Bollinger Bands Mean Reversion',
                 'type': 'bollinger_bands',
                 'description': 'Buy at lower band, sell at upper band',
                 'params': {'period': 20, 'std_dev': 2}
             },
             {
-                'name': 'MACD Strategy',
+                'name': 'MACD Trend Following',
                 'type': 'macd',
                 'description': 'Buy when MACD crosses above signal line, sell when it crosses below',
                 'params': {'fast': 12, 'slow': 26, 'signal': 9}
             },
             {
-                'name': 'Momentum Strategy',
+                'name': 'Momentum Breakout',
                 'type': 'momentum',
                 'description': 'Buy on positive momentum, sell on negative momentum',
                 'params': {'lookback': 20, 'threshold': 0.02}
+            },
+            {
+                'name': 'Stochastic Oscillator',
+                'type': 'stochastic',
+                'description': 'Buy when Stochastic oversold, sell when overbought',
+                'params': {'k_period': 14, 'd_period': 3, 'oversold': 20, 'overbought': 80}
+            },
+            {
+                'name': 'Williams %R Strategy',
+                'type': 'williams_r',
+                'description': 'Buy when Williams %R oversold, sell when overbought',
+                'params': {'period': 14, 'oversold': -80, 'overbought': -20}
+            },
+            {
+                'name': 'Mean Reversion with ATR',
+                'type': 'atr_reversion',
+                'description': 'Mean reversion strategy using Average True Range for volatility',
+                'params': {'period': 14, 'atr_multiplier': 2}
+            },
+            {
+                'name': 'Trend Following Triple MA',
+                'type': 'triple_ma',
+                'description': 'Buy when price above all 3 MAs, sell when below',
+                'params': {'short': 10, 'medium': 20, 'long': 50}
+            },
+            {
+                'name': 'Volume Breakout',
+                'type': 'volume_breakout',
+                'description': 'Buy on high volume price breakouts',
+                'params': {'volume_period': 20, 'price_period': 20, 'volume_multiplier': 1.5}
+            },
+            {
+                'name': 'Support & Resistance',
+                'type': 'support_resistance',
+                'description': 'Buy at support levels, sell at resistance levels',
+                'params': {'lookback': 50, 'threshold': 0.02}
+            },
+            {
+                'name': 'Channel Breakout',
+                'type': 'channel_breakout',
+                'description': 'Buy when price breaks above recent highs',
+                'params': {'period': 20, 'breakout_threshold': 0.01}
             }
         ]
+    
+    def _stochastic_strategy(self, data: pd.DataFrame, params: Dict) -> pd.DataFrame:
+        """Stochastic Oscillator strategy"""
+        k_period = params.get('k_period', 14)
+        d_period = params.get('d_period', 3)
+        oversold = params.get('oversold', 20)
+        overbought = params.get('overbought', 80)
+        
+        signals = pd.DataFrame(index=data.index)
+        
+        # Calculate Stochastic
+        lowest_low = data['Low'].rolling(window=k_period).min()
+        highest_high = data['High'].rolling(window=k_period).max()
+        signals['Stoch_K'] = 100 * ((data['Close'] - lowest_low) / (highest_high - lowest_low))
+        signals['Stoch_D'] = signals['Stoch_K'].rolling(window=d_period).mean()
+        
+        signals['Position'] = 0
+        signals.loc[(signals['Stoch_K'] < oversold) & (signals['Stoch_D'] < oversold), 'Position'] = 1
+        signals.loc[(signals['Stoch_K'] > overbought) & (signals['Stoch_D'] > overbought), 'Position'] = 0
+        
+        signals['Position'] = signals['Position'].replace(0, np.nan).fillna(method='ffill').fillna(0)
+        signals['Signal'] = signals['Position'].diff()
+        
+        return signals
+    
+    def _williams_r_strategy(self, data: pd.DataFrame, params: Dict) -> pd.DataFrame:
+        """Williams %R strategy"""
+        period = params.get('period', 14)
+        oversold = params.get('oversold', -80)
+        overbought = params.get('overbought', -20)
+        
+        signals = pd.DataFrame(index=data.index)
+        
+        # Calculate Williams %R
+        highest_high = data['High'].rolling(window=period).max()
+        lowest_low = data['Low'].rolling(window=period).min()
+        signals['Williams_R'] = -100 * ((highest_high - data['Close']) / (highest_high - lowest_low))
+        
+        signals['Position'] = 0
+        signals.loc[signals['Williams_R'] < oversold, 'Position'] = 1
+        signals.loc[signals['Williams_R'] > overbought, 'Position'] = 0
+        
+        signals['Position'] = signals['Position'].replace(0, np.nan).fillna(method='ffill').fillna(0)
+        signals['Signal'] = signals['Position'].diff()
+        
+        return signals
+    
+    def _atr_reversion_strategy(self, data: pd.DataFrame, params: Dict) -> pd.DataFrame:
+        """ATR-based mean reversion strategy"""
+        period = params.get('period', 14)
+        atr_multiplier = params.get('atr_multiplier', 2)
+        
+        signals = pd.DataFrame(index=data.index)
+        
+        # Calculate ATR
+        high_low = data['High'] - data['Low']
+        high_close = np.abs(data['High'] - data['Close'].shift())
+        low_close = np.abs(data['Low'] - data['Close'].shift())
+        ranges = pd.concat([high_low, high_close, low_close], axis=1)
+        true_range = ranges.max(axis=1)
+        signals['ATR'] = true_range.rolling(window=period).mean()
+        
+        # Calculate mean and bands
+        signals['SMA'] = data['Close'].rolling(window=period).mean()
+        signals['Upper_Band'] = signals['SMA'] + (signals['ATR'] * atr_multiplier)
+        signals['Lower_Band'] = signals['SMA'] - (signals['ATR'] * atr_multiplier)
+        
+        signals['Position'] = 0
+        signals.loc[data['Close'] <= signals['Lower_Band'], 'Position'] = 1
+        signals.loc[data['Close'] >= signals['Upper_Band'], 'Position'] = 0
+        
+        signals['Position'] = signals['Position'].replace(0, np.nan).fillna(method='ffill').fillna(0)
+        signals['Signal'] = signals['Position'].diff()
+        
+        return signals
+    
+    def _triple_ma_strategy(self, data: pd.DataFrame, params: Dict) -> pd.DataFrame:
+        """Triple Moving Average strategy"""
+        short = params.get('short', 10)
+        medium = params.get('medium', 20)
+        long = params.get('long', 50)
+        
+        signals = pd.DataFrame(index=data.index)
+        signals['MA_Short'] = data['Close'].rolling(window=short).mean()
+        signals['MA_Medium'] = data['Close'].rolling(window=medium).mean()
+        signals['MA_Long'] = data['Close'].rolling(window=long).mean()
+        
+        # Buy when price above all MAs and MAs in ascending order
+        buy_condition = ((data['Close'] > signals['MA_Short']) & 
+                        (signals['MA_Short'] > signals['MA_Medium']) & 
+                        (signals['MA_Medium'] > signals['MA_Long']))
+        
+        signals['Position'] = 0
+        signals.loc[buy_condition, 'Position'] = 1
+        
+        signals['Position'] = signals['Position'].replace(0, np.nan).fillna(method='ffill').fillna(0)
+        signals['Signal'] = signals['Position'].diff()
+        
+        return signals
+    
+    def _volume_breakout_strategy(self, data: pd.DataFrame, params: Dict) -> pd.DataFrame:
+        """Volume breakout strategy"""
+        volume_period = params.get('volume_period', 20)
+        price_period = params.get('price_period', 20)
+        volume_multiplier = params.get('volume_multiplier', 1.5)
+        
+        signals = pd.DataFrame(index=data.index)
+        
+        # Calculate volume and price indicators
+        signals['Volume_MA'] = data['Volume'].rolling(window=volume_period).mean()
+        signals['Price_High'] = data['High'].rolling(window=price_period).max()
+        
+        # High volume breakout conditions
+        high_volume = data['Volume'] > (signals['Volume_MA'] * volume_multiplier)
+        price_breakout_up = data['Close'] > signals['Price_High'].shift(1)
+        
+        signals['Position'] = 0
+        signals.loc[high_volume & price_breakout_up, 'Position'] = 1
+        
+        signals['Position'] = signals['Position'].replace(0, np.nan).fillna(method='ffill').fillna(0)
+        signals['Signal'] = signals['Position'].diff()
+        
+        return signals
+    
+    def _support_resistance_strategy(self, data: pd.DataFrame, params: Dict) -> pd.DataFrame:
+        """Support and resistance strategy"""
+        lookback = params.get('lookback', 50)
+        threshold = params.get('threshold', 0.02)
+        
+        signals = pd.DataFrame(index=data.index)
+        
+        # Calculate support and resistance levels
+        signals['Support'] = data['Low'].rolling(window=lookback).min()
+        signals['Resistance'] = data['High'].rolling(window=lookback).max()
+        
+        # Buy near support
+        near_support = (data['Close'] - signals['Support']) / signals['Support'] <= threshold
+        
+        signals['Position'] = 0
+        signals.loc[near_support, 'Position'] = 1
+        
+        signals['Position'] = signals['Position'].replace(0, np.nan).fillna(method='ffill').fillna(0)
+        signals['Signal'] = signals['Position'].diff()
+        
+        return signals
+    
+    def _channel_breakout_strategy(self, data: pd.DataFrame, params: Dict) -> pd.DataFrame:
+        """Channel breakout strategy"""
+        period = params.get('period', 20)
+        breakout_threshold = params.get('breakout_threshold', 0.01)
+        
+        signals = pd.DataFrame(index=data.index)
+        
+        # Calculate channel
+        signals['Upper_Channel'] = data['High'].rolling(window=period).max()
+        
+        # Breakout conditions
+        upper_breakout = data['Close'] > signals['Upper_Channel'].shift(1) * (1 + breakout_threshold)
+        
+        signals['Position'] = 0
+        signals.loc[upper_breakout, 'Position'] = 1
+        
+        signals['Position'] = signals['Position'].replace(0, np.nan).fillna(method='ffill').fillna(0)
+        signals['Signal'] = signals['Position'].diff()
+        
+        return signals

@@ -16,6 +16,7 @@ from utils.visualizations import create_comparison_chart, create_pl_table, creat
 from utils.config_manager import ConfigManager
 from utils.performance_metrics import PerformanceMetrics
 from utils.backtesting_engine import BacktestingEngine
+from utils.technical_indicators import TechnicalIndicators
 
 # Page configuration
 st.set_page_config(
@@ -44,6 +45,7 @@ model_manager = ModelManager()
 config_manager = ConfigManager()
 performance_metrics = PerformanceMetrics()
 backtesting_engine = BacktestingEngine()
+technical_indicators = TechnicalIndicators()
 
 def main():
     st.title("📈 Advanced Financial Analysis Platform")
@@ -248,8 +250,9 @@ def display_data_analysis():
                 st.info(f"📅 **Data loaded successfully:** {len(data)} records")
         
         # Create tabs for different analyses
-        tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+        tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
             "📈 Raw Data", 
+            "📊 Technical Analysis",
             "💰 P&L Analysis", 
             "🔮 ML Predictions", 
             "📅 Year Comparison", 
@@ -261,18 +264,21 @@ def display_data_analysis():
             display_raw_data_tab(data)
         
         with tab2:
-            display_pl_analysis_tab(data)
+            display_technical_analysis_tab(data)
         
         with tab3:
-            display_ml_predictions_tab(data)
+            display_pl_analysis_tab(data)
         
         with tab4:
-            display_year_comparison_tab(data)
+            display_ml_predictions_tab(data)
         
         with tab5:
-            display_anomaly_detection_tab(data)
+            display_year_comparison_tab(data)
         
         with tab6:
+            display_anomaly_detection_tab(data)
+        
+        with tab7:
             display_backtesting_tab(data)
 
 def display_raw_data_tab(data):
@@ -709,6 +715,276 @@ def performance_dashboard_page():
         
     else:
         st.info("ℹ️ Please load data first to view performance metrics")
+
+def display_technical_analysis_tab(data):
+    """Display comprehensive technical analysis with interactive indicators"""
+    st.subheader("📊 Technical Analysis & Trading Signals")
+    help_info("Technical analysis uses mathematical calculations based on price and volume to identify trading opportunities. Combine multiple indicators for more reliable signals and better market timing.", "technical_analysis_help")
+    
+    if data is None or len(data) < 50:
+        st.warning("⚠️ Insufficient data for technical analysis. Need at least 50 days of historical data.")
+        return
+    
+    # Indicator selection interface
+    st.subheader("🎯 Select Technical Indicators")
+    
+    # Get indicator categories
+    indicator_categories = technical_indicators.get_indicator_categories()
+    
+    # Create columns for indicator selection
+    cols = st.columns(len(indicator_categories))
+    selected_indicators = []
+    
+    for i, (category, indicators) in enumerate(indicator_categories.items()):
+        with cols[i]:
+            st.write(f"**{category}**")
+            category_selected = []
+            
+            for indicator in indicators:
+                if st.checkbox(indicator, key=f"indicator_{indicator}"):
+                    category_selected.append(indicator)
+                    selected_indicators.append(indicator)
+            
+            # Quick select all for category
+            if st.button(f"Select All {category}", key=f"select_all_{i}"):
+                st.rerun()
+    
+    # Quick preset buttons
+    st.subheader("🔧 Quick Presets")
+    preset_cols = st.columns(4)
+    
+    with preset_cols[0]:
+        if st.button("📈 Trend Analysis", type="secondary"):
+            selected_indicators = ['SMA_20', 'SMA_50', 'EMA_20', 'BB', 'MACD', 'VWAP']
+    
+    with preset_cols[1]:
+        if st.button("⚡ Momentum Signals", type="secondary"):
+            selected_indicators = ['RSI', 'Stoch_K', 'Williams_R', 'CCI', 'MFI']
+    
+    with preset_cols[2]:
+        if st.button("📊 Volume Analysis", type="secondary"):
+            selected_indicators = ['Volume', 'OBV', 'Volume_SMA', 'VWAP']
+    
+    with preset_cols[3]:
+        if st.button("🎯 Complete Setup", type="secondary"):
+            selected_indicators = ['SMA_20', 'SMA_50', 'BB', 'RSI', 'MACD', 'Volume', 'VWAP']
+    
+    if selected_indicators:
+        # Calculate indicators
+        with st.spinner("Calculating technical indicators..."):
+            try:
+                # Calculate all indicators
+                analyzed_data = technical_indicators.calculate_all_indicators(data)
+                
+                # Generate trading signals
+                signal_data = technical_indicators.generate_trading_signals(analyzed_data)
+                
+                # Display main technical analysis chart
+                st.subheader("📈 Interactive Technical Chart")
+                
+                # Chart configuration
+                col1, col2 = st.columns(2)
+                with col1:
+                    timeframe = st.selectbox("Timeframe", ["All Data", "Last 6 Months", "Last 3 Months", "Last Month"])
+                with col2:
+                    chart_height = st.slider("Chart Height", 400, 1200, 800, 100)
+                
+                # Filter data based on timeframe
+                if timeframe == "Last 6 Months":
+                    chart_data = analyzed_data.tail(126)
+                elif timeframe == "Last 3 Months":
+                    chart_data = analyzed_data.tail(63)
+                elif timeframe == "Last Month":
+                    chart_data = analyzed_data.tail(21)
+                else:
+                    chart_data = analyzed_data
+                
+                # Create and display technical analysis chart
+                fig = technical_indicators.create_technical_analysis_chart(
+                    chart_data, 
+                    selected_indicators, 
+                    f"Technical Analysis - {st.session_state.symbol if st.session_state.symbol else 'Stock'}"
+                )
+                fig.update_layout(height=chart_height)
+                st.plotly_chart(fig, use_container_width=True)
+                
+                # Current indicator readings
+                st.subheader("📊 Current Market Analysis")
+                
+                # Get indicator summary
+                indicator_summary = technical_indicators.get_indicator_summary(analyzed_data)
+                
+                # Display summary in columns
+                summary_cols = st.columns(len(indicator_summary))
+                for i, (indicator, reading) in enumerate(indicator_summary.items()):
+                    with summary_cols[i % len(summary_cols)]:
+                        if "Bullish" in reading or "Uptrend" in reading or "Oversold" in reading:
+                            st.success(f"**{indicator}**\n{reading}")
+                        elif "Bearish" in reading or "Downtrend" in reading or "Overbought" in reading:
+                            st.error(f"**{indicator}**\n{reading}")
+                        else:
+                            st.info(f"**{indicator}**\n{reading}")
+                
+                # Trading signals analysis
+                st.subheader("🎯 Trading Signals & Opportunities")
+                
+                # Get recent signals
+                recent_signals = signal_data.tail(20)
+                
+                # Count signals
+                total_buy_signals = recent_signals['Buy_Signal'].sum()
+                total_sell_signals = recent_signals['Sell_Signal'].sum()
+                signal_strength = recent_signals['Signal_Strength'].iloc[-1] if not recent_signals.empty else 0
+                
+                # Display signal summary
+                signal_cols = st.columns(4)
+                
+                with signal_cols[0]:
+                    st.metric("Buy Signals (20 days)", int(total_buy_signals))
+                
+                with signal_cols[1]:
+                    st.metric("Sell Signals (20 days)", int(total_sell_signals))
+                
+                with signal_cols[2]:
+                    st.metric("Current Signal Strength", f"{signal_strength:.1f}")
+                
+                with signal_cols[3]:
+                    if signal_strength > 2:
+                        st.success("**Strong Buy**")
+                    elif signal_strength > 0:
+                        st.info("**Weak Buy**")
+                    elif signal_strength < -2:
+                        st.error("**Strong Sell**")
+                    elif signal_strength < 0:
+                        st.warning("**Weak Sell**")
+                    else:
+                        st.info("**Neutral**")
+                
+                # Detailed indicator values
+                with st.expander("📋 Detailed Indicator Values"):
+                    latest_values = analyzed_data.tail(1)
+                    
+                    # Create indicator details table
+                    indicator_details = []
+                    for indicator in selected_indicators:
+                        matching_columns = [col for col in latest_values.columns if indicator.replace('_', '') in col.replace('_', '') or indicator in col]
+                        
+                        for col in matching_columns:
+                            if col in latest_values.columns:
+                                value = latest_values[col].iloc[0]
+                                if pd.notna(value):
+                                    indicator_details.append({
+                                        'Indicator': col,
+                                        'Current Value': f"{value:.2f}" if isinstance(value, (int, float)) else str(value)
+                                    })
+                    
+                    if indicator_details:
+                        indicator_df = pd.DataFrame(indicator_details)
+                        st.dataframe(indicator_df, use_container_width=True)
+                
+                # Pattern recognition
+                st.subheader("🔍 Pattern Recognition")
+                
+                pattern_cols = st.columns(3)
+                
+                with pattern_cols[0]:
+                    # Support and Resistance
+                    if 'Pivot' in analyzed_data.columns:
+                        current_price = analyzed_data['Close'].iloc[-1]
+                        pivot = analyzed_data['Pivot'].iloc[-1]
+                        r1 = analyzed_data['R1'].iloc[-1] if 'R1' in analyzed_data.columns else None
+                        s1 = analyzed_data['S1'].iloc[-1] if 'S1' in analyzed_data.columns else None
+                        
+                        st.info(f"**Support/Resistance**\nPrice: ${current_price:.2f}\nPivot: ${pivot:.2f}")
+                        if r1: st.write(f"Resistance 1: ${r1:.2f}")
+                        if s1: st.write(f"Support 1: ${s1:.2f}")
+                
+                with pattern_cols[1]:
+                    # Trend Analysis
+                    if all(col in analyzed_data.columns for col in ['SMA_20', 'SMA_50']):
+                        sma20 = analyzed_data['SMA_20'].iloc[-1]
+                        sma50 = analyzed_data['SMA_50'].iloc[-1]
+                        current_price = analyzed_data['Close'].iloc[-1]
+                        
+                        if current_price > sma20 > sma50:
+                            st.success("**Strong Uptrend**\nPrice > SMA20 > SMA50")
+                        elif current_price > sma20:
+                            st.info("**Weak Uptrend**\nPrice > SMA20")
+                        elif current_price < sma20 < sma50:
+                            st.error("**Strong Downtrend**\nPrice < SMA20 < SMA50")
+                        else:
+                            st.warning("**Weak Downtrend**\nPrice < SMA20")
+                
+                with pattern_cols[2]:
+                    # Volatility Analysis
+                    if 'ATR' in analyzed_data.columns:
+                        atr = analyzed_data['ATR'].iloc[-1]
+                        atr_pct = (atr / analyzed_data['Close'].iloc[-1]) * 100
+                        
+                        if atr_pct > 3:
+                            st.warning(f"**High Volatility**\nATR: {atr_pct:.1f}%")
+                        elif atr_pct < 1:
+                            st.info(f"**Low Volatility**\nATR: {atr_pct:.1f}%")
+                        else:
+                            st.success(f"**Normal Volatility**\nATR: {atr_pct:.1f}%")
+                
+                # Export functionality
+                st.subheader("💾 Export Analysis")
+                
+                export_cols = st.columns(2)
+                
+                with export_cols[0]:
+                    if st.button("📊 Export Indicator Data"):
+                        # Create downloadable CSV
+                        export_data = analyzed_data[['Open', 'High', 'Low', 'Close', 'Volume'] + 
+                                                  [col for col in analyzed_data.columns if any(ind in col for ind in selected_indicators)]]
+                        csv = export_data.to_csv()
+                        st.download_button(
+                            label="Download CSV",
+                            data=csv,
+                            file_name=f"technical_analysis_{st.session_state.symbol}_{datetime.now().strftime('%Y%m%d')}.csv",
+                            mime="text/csv"
+                        )
+                
+                with export_cols[1]:
+                    if st.button("📈 Export Chart Image"):
+                        st.info("Chart export functionality can be accessed using the Plotly chart toolbar above.")
+                
+            except Exception as e:
+                st.error(f"❌ Error calculating technical indicators: {str(e)}")
+                st.info("Please ensure you have sufficient data and try selecting fewer indicators.")
+    
+    else:
+        st.info("ℹ️ Please select technical indicators to display the analysis chart.")
+        
+        # Show sample indicators preview
+        st.subheader("📋 Available Technical Indicators")
+        
+        indicator_info = {
+            "Trend Indicators": {
+                "Moving Averages (SMA/EMA)": "Smooth price data to identify trend direction",
+                "Bollinger Bands": "Volatility bands showing overbought/oversold conditions",
+                "MACD": "Moving Average Convergence Divergence for trend changes",
+                "Ichimoku Cloud": "Comprehensive trend and momentum system",
+                "VWAP": "Volume Weighted Average Price for institutional trading levels"
+            },
+            "Momentum Indicators": {
+                "RSI": "Relative Strength Index (14-period) for overbought/oversold levels",
+                "Stochastic": "Momentum oscillator comparing closing price to price range",
+                "Williams %R": "Momentum indicator similar to Stochastic",
+                "CCI": "Commodity Channel Index for cyclical trends",
+                "Money Flow Index": "Volume-weighted RSI for buying/selling pressure"
+            },
+            "Volume Indicators": {
+                "On-Balance Volume": "Cumulative volume indicator for trend confirmation",
+                "Volume SMA": "Moving average of volume for volume trend analysis"
+            }
+        }
+        
+        for category, indicators in indicator_info.items():
+            with st.expander(f"📊 {category}"):
+                for name, description in indicators.items():
+                    st.write(f"**{name}**: {description}")
 
 def display_backtesting_tab(data):
     """Display backtesting results and strategy comparison"""

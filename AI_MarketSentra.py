@@ -243,7 +243,6 @@ def display_data_analysis():
             with st.expander("📊 Data Range Information", expanded=True):
                 st.info(f"📅 **Historical data available:** {start_date_full} to {end_date_full} ({total_years:.1f}+ years)")
                 st.info(f"📊 **Selected period:** {start_date_full} to {end_date_full}")
-                #st.info(f"📊**History Data available from**: {history.index[0].strftime('%Y-%m-%d')} to {history.index[-1].strftime('%Y-%m-%d')}")
         except Exception:
             with st.expander("📊 Data Range Information", expanded=True):
                 st.info(f"📅 **Data loaded successfully:** {len(data)} records")

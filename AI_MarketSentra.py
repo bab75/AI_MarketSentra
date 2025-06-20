@@ -196,6 +196,20 @@ def help_info(text, key=None):
     with st.expander("ℹ️ Help", expanded=False):
         st.info(text)
 
+def get_full_historical_range(self, symbol):
+    """Get the full available historical range for a symbol"""
+    try:
+        # Fetch with max period to get full range
+        ticker = yf.Ticker(symbol)
+        full_data = ticker.history(period="max")
+        return {
+            'start_date': full_data.index[0],
+            'end_date': full_data.index[-1],
+            'total_records': len(full_data)
+        }
+    except:
+        return None
+
 def display_data_info(data, source):
     """Display information about the loaded data"""
     col1, col2 = st.columns(2)
@@ -243,12 +257,17 @@ def display_data_analysis():
             end_date_full = end_ts.strftime('%b %Y')
             
             with st.expander("📊 Data Range Information", expanded=True):
+                # Get full historical range for display
+                    if st.session_state.symbol:
+                        full_range = data_loader.get_full_historical_range(st.session_state.symbol)
+                        if full_range:
+                st.info(f"📅**History Data available from**: {full_range['start_date'].strftime('%Y-%m-%d')} to {full_range['end_date'].strftime('%Y-%m-%d')}")
                 st.info(f"📅 **Historical data available:** {start_date_full} to {end_date_full} ({total_years:.1f}+ years)")
                 st.info(f"📊 **Selected period:** {start_date_full} to {end_date_full}")
         except Exception:
             with st.expander("📊 Data Range Information", expanded=True):
                 st.info(f"📅 **Data loaded successfully:** {len(data)} records")
-                st.info(f"📅**History Data available from**: {history.index[0].strftime('%Y-%m-%d')} to {history.index[-1].strftime('%Y-%m-%d')}")
+                
         
         # Create tabs for different analyses
         tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([

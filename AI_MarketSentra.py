@@ -60,7 +60,7 @@ def toggle_theme():
     
     # Apply theme CSS
     if st.session_state.get('dark_theme', False):
-        # Enhanced dark theme CSS with broader text color coverage
+        # Dark theme CSS
         st.markdown("""
         <style>
         .stApp {
@@ -69,13 +69,7 @@ def toggle_theme():
         }
         .stSidebar {
             background-color: #262730;
-            color: white;
         }
-        /* Global text override */
-        body, p, div, span, label, h1, h2, h3, h4, h5, h6 {
-            color: white !important;
-        }
-        /* Specific component styling */
         .stSelectbox label, .stTextInput label, .stRadio label, .stCheckbox label, .stSlider label {
             color: white !important;
         }
@@ -85,24 +79,6 @@ def toggle_theme():
         .stDataFrame {
             color: white;
             background-color: #262730;
-        }
-        .stButton button {
-            color: white !important;
-            background-color: #1A1D23;
-        }
-        .stExpander {
-            background-color: #1A1D23;
-            color: white;
-        }
-        .stMetric {
-            color: white;
-        }
-        /* Plotly chart text override */
-        .plotly .modebar, .plotly .gtitle, .plotly .xtitle, .plotly .ytitle, .plotly .legendtext {
-            color: white !important;
-        }
-        .plotly .cartesianlayer .trace text {
-            fill: white !important;
         }
         </style>
         """, unsafe_allow_html=True)
@@ -116,7 +92,6 @@ def toggle_theme():
         }
         .stSidebar {
             background-color: #F0F2F6;
-            color: black;
         }
         .stDataFrame {
             color: black;
@@ -420,10 +395,7 @@ def display_raw_data_tab(data):
         title="Stock Price Chart",
         xaxis_title="Date",
         yaxis_title="Price ($)",
-        height=500,
-        plot_bgcolor='#1A1D23',
-        paper_bgcolor='#1A1D23',
-        font_color='white'
+        height=500
     )
     
     st.plotly_chart(fig, use_container_width=True)
@@ -688,10 +660,7 @@ def display_ml_predictions_tab(data):
                             title=f"{selected_model} Predictions vs Actual",
                             xaxis_title="Date",
                             yaxis_title="Price ($)",
-                            height=400,
-                            plot_bgcolor='#1A1D23',
-                            paper_bgcolor='#1A1D23',
-                            font_color='white'
+                            height=400
                         )
                         
                         st.plotly_chart(fig, use_container_width=True)
@@ -913,10 +882,7 @@ def display_technical_analysis_tab(data):
                     st.session_state.selected_indicators, 
                     f"Technical Analysis - {st.session_state.symbol if st.session_state.symbol else 'Stock'}"
                 )
-                fig.update_layout(height=chart_height,
-                                plot_bgcolor='#1A1D23',
-                                paper_bgcolor='#1A1D23',
-                                font_color='white')
+                fig.update_layout(height=chart_height)
                 st.plotly_chart(fig, use_container_width=True)
                 
                 # Current indicator readings
@@ -992,7 +958,7 @@ def display_technical_analysis_tab(data):
                     if indicator_details:
                         indicator_df = pd.DataFrame(indicator_details)
                         st.dataframe(indicator_df, use_container_width=True)
-                
+                    
                 # Pattern recognition
                 st.subheader("🔍 Pattern Recognition")
                 

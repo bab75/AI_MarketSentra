@@ -206,7 +206,8 @@ class MinimalModelManager:
                 'labels': labels.tolist(),
                 'next_price': data['Close'].iloc[-1],
                 'confidence': 50,
-                'rmse': 0
+                'rmse': 0,
+                'accuracy': 50.0
             }
             
             return results

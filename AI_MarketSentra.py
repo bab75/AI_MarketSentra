@@ -213,6 +213,16 @@ def display_data_info(data, source):
         current_price = data['Close'].iloc[-1]
         current_date = data.index[-1].strftime('%b %d, %Y')
         st.write(f"**Current Price:** ${current_price:.2f} (as of {current_date})")
+
+        # Find the date when the high occurred
+        high_date = data.loc[data['High'] == data['High'].max()].index[0].strftime('%b %d, %Y')
+        st.metric("Period High", f"${data['High'].max():.2f}")
+        st.caption(f"on {high_date}")
+
+        # Find the date when the low occurred
+        low_date = data.loc[data['Low'] == data['Low'].min()].index[0].strftime('%b %d, %Y')
+        st.metric("Period Low", f"${data['Low'].min():.2f}")
+        st.caption(f"on {low_date}")
     
     with col2:
         st.subheader("🔍 Data Quality")
@@ -308,9 +318,15 @@ def display_raw_data_tab(data):
             st.metric("Daily Change", "N/A")
     
     with col3:
+        #st.metric("Period High", f"${data['High'].max():.2f}")-old code changed to have date
+        high_date = data.loc[data['High'] == data['High'].max()].index[0].strftime('%b %d, %Y')
         st.metric("Period High", f"${data['High'].max():.2f}")
+        st.caption(f"on {high_date}")
     with col4:
+        # st.metric("Period Low", f"${data['Low'].min():.2f}")- old code changed to have date
+        low_date = data.loc[data['Low'] == data['Low'].min()].index[0].strftime('%b %d, %Y')
         st.metric("Period Low", f"${data['Low'].min():.2f}")
+        st.caption(f"on {low_date}")
     
     # Interactive chart
     fig = go.Figure()

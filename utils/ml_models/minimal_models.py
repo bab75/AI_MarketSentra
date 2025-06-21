@@ -239,7 +239,8 @@ class MinimalModelManager:
                 'predictions': predictions.tolist(),
                 'next_price': data['Close'].iloc[-1],
                 'confidence': 100 - (np.mean(anomalies) * 100),
-                'rmse': 0
+                'rmse': 0,
+                'accuracy': 100 - (np.mean(anomalies) * 100)  # Add this line
             }
             
             return results

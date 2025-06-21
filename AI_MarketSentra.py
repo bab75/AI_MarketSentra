@@ -60,15 +60,16 @@ def toggle_theme():
     
     # Apply theme CSS
     if st.session_state.get('dark_theme', False):
-        # Dark theme CSS
+        # Dark theme CSS with white text
         st.markdown("""
         <style>
         .stApp {
-            background-color: #1C1F26;
+            background-color: #0E1117;
             color: white;
         }
         .stSidebar {
             background-color: #262730;
+            color: white;
         }
         .stSelectbox label, .stTextInput label, .stRadio label, .stCheckbox label, .stSlider label {
             color: white !important;
@@ -79,6 +80,22 @@ def toggle_theme():
         .stDataFrame {
             color: white;
             background-color: #262730;
+        }
+        /* Ensure all text elements inherit white color */
+        * {
+            color: white !important;
+        }
+        /* Override specific elements if needed */
+        .stButton button {
+            color: white !important;
+            background-color: #1A1D23;
+        }
+        .stExpander {
+            background-color: #1A1D23;
+            color: white;
+        }
+        .stMetric {
+            color: white;
         }
         </style>
         """, unsafe_allow_html=True)
@@ -92,6 +109,7 @@ def toggle_theme():
         }
         .stSidebar {
             background-color: #F0F2F6;
+            color: black;
         }
         .stDataFrame {
             color: black;
@@ -958,7 +976,7 @@ def display_technical_analysis_tab(data):
                     if indicator_details:
                         indicator_df = pd.DataFrame(indicator_details)
                         st.dataframe(indicator_df, use_container_width=True)
-                    
+                
                 # Pattern recognition
                 st.subheader("🔍 Pattern Recognition")
                 

@@ -61,7 +61,7 @@ class MinimalModelManager:
                     random_seed=42,
                     verbose=False,
                     thread_count=-1
-                )
+                ),
                 'Gradient Boosting Machine': GradientBoostingRegressor(
                     n_estimators=100,
                     max_depth=6,

@@ -468,7 +468,7 @@ def display_daily_pl(data):
         
         # Detailed table
         with st.expander("📊 Daily P&L Details"):
-            st.dataframe(pl_data.tail(50), use_container_width=True)
+            st.dataframe(pl_data, use_container_width=True)
             
     except Exception as e:
         st.error(f"Error in daily P&L analysis: {str(e)}")

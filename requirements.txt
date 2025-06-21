@@ -1,4 +1,4 @@
-streamlit
+streamlit>=1.46.0
 pandas>=2.3.0
 numpy>=2.3.0
 plotly>=6.1.2
@@ -13,6 +13,4 @@ joblib
 XGBoost
 lightgbm>=4.0.0
 catboost>=1.2.0
-tensorflow
-
 

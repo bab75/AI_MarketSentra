@@ -13,4 +13,4 @@ joblib
 XGBoost
 lightgbm>=4.0.0
 catboost>=1.2.0
- tensorflow>2.18.1,<2.19.0
+ tensorflow

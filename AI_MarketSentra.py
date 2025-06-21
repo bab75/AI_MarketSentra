@@ -64,7 +64,7 @@ def toggle_theme():
         st.markdown("""
         <style>
         .stApp {
-            background-color: #E0E0E0;
+            background-color: #121212;
             color: white;
         }
         .stSidebar {

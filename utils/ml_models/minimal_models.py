@@ -16,10 +16,10 @@ import streamlit as st
 from xgboost import XGBRegressor
 from lightgbm import LGBMRegressor
 from catboost import CatBoostRegressor
-
+from .deep_learning_models import DeepLearningManager
 
 class MinimalModelManager:
-    """Minimal ML Model Manager with core scikit-learn models only"""
+    """Minimal ML Model Manager with core scikit-learn models and integration for deep learning"""
     
     def __init__(self):
         self.models = {
@@ -83,12 +83,18 @@ class MinimalModelManager:
         self.trained_models = {}
         self.model_performances = {}
         self.scalers = {}
+        self.deep_learning_manager = DeepLearningManager()
     
     def get_available_models(self):
         """Get all available models organized by category"""
         available = {}
         for category, models in self.models.items():
             available[category] = list(models.keys())
+        
+        # Add deep learning models
+        dl_models = self.deep_learning_manager.get_available_models()
+        available.update(dl_models)
+        
         return available
     
     def get_model_count(self):
@@ -105,6 +111,9 @@ class MinimalModelManager:
     def train_and_predict(self, data, category, model_name, **kwargs):
         """Train a model and make predictions"""
         try:
+            if category == 'Deep Learning Models':
+                return self.deep_learning_manager.train_and_predict(data, model_name, **kwargs)
+            
             if category not in self.models:
                 return {'error': f'Category {category} not found'}
             

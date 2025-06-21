@@ -3,7 +3,7 @@ pandas>=2.3.0
 numpy>=2.3.0
 plotly>=6.1.2
 yfinance>=0.2.63
-scikit-learn<=1.5.1
+scikit-learn>=1.7.0
 scipy>=1.15.3
 openpyxl>=3.1.5
 ta>=0.11.0
@@ -13,4 +13,4 @@ joblib
 XGBoost
 lightgbm>=4.0.0
 catboost>=1.2.0
-tensorflow
+ tensorflow>2.18.1,<2.19.0

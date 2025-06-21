@@ -11,10 +11,12 @@ from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import mean_squared_error, r2_score
 from sklearn.model_selection import train_test_split
+from sklearn.ensemble import GradientBoostingRegressor
 import streamlit as st
 from xgboost import XGBRegressor
 from lightgbm import LGBMRegressor
 from catboost import CatBoostRegressor
+
 
 class MinimalModelManager:
     """Minimal ML Model Manager with core scikit-learn models only"""
@@ -60,7 +62,13 @@ class MinimalModelManager:
                     verbose=False,
                     thread_count=-1
                 )
-            },
+                'Gradient Boosting Machine': GradientBoostingRegressor(
+                    n_estimators=100,
+                    max_depth=6,
+                    learning_rate=0.1,
+                    random_state=42
+                )
+            },  
             'Clustering': {
                 'K-Means': KMeans(n_clusters=3, random_state=42)
             },

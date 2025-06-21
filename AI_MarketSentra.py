@@ -360,7 +360,9 @@ def display_raw_data_tab(data):
     with col1:
         current_price = data['Close'].iloc[-1]
         current_date = data.index[-1].strftime('%b %d, %Y')
-        st.metric("Current Price", f"${current_price:.2f}")
+        #st.metric("Current Price", f"${current_price:.2f}")
+        symbol = st.session_state.get('symbol', 'Stock')
+        st.metric(f"{symbol} Current Price", f"${current_price:.2f}")
         st.caption(f"as of {current_date}")
     
     with col2:

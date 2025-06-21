@@ -1231,7 +1231,8 @@ def display_backtesting_tab(data):
                         st.error("❌ No valid backtest results generated. Please check your data and strategy selection.")
                         
                 except Exception as e:
-                    st.error(f"❌ Error running backtesting analysis: {str(e)}")
+                    #st.error(f"❌ Error running backtesting analysis: {str(e)}")
+                    st.warning("⚠️ Please select at least one trading strategy to run backtesting analysis.")
     
     else:
         st.info("ℹ️ Please select at least one strategy to run backtesting analysis.")

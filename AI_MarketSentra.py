@@ -49,59 +49,7 @@ performance_metrics = PerformanceMetrics()
 backtesting_engine = BacktestingEngine()
 technical_indicators = TechnicalIndicators()
 
-def toggle_theme():
-    """Toggle between dark and light themes"""
-    if 'dark_theme' not in st.session_state:
-        st.session_state.dark_theme = False
-    
-    if st.button("🌙/☀️ Toggle Theme"):
-        st.session_state.dark_theme = not st.session_state.dark_theme
-        st.rerun()
-    
-    # Apply theme CSS
-    if st.session_state.get('dark_theme', False):
-        # Dark theme CSS
-        st.markdown("""
-        <style>
-        .stApp {
-            background-color: #0E1117;
-            color: white;
-        }
-        .stSidebar {
-            background-color: #262730;
-        }
-        .stSelectbox label, .stTextInput label, .stRadio label, .stCheckbox label, .stSlider label {
-            color: white !important;
-        }
-        .stMarkdown h1, .stMarkdown h2, .stMarkdown h3, .stMarkdown h4, .stMarkdown h5, .stMarkdown h6 {
-            color: white !important;
-        }
-        .stDataFrame {
-            color: white;
-            background-color: #262730;
-        }
-        </style>
-        """, unsafe_allow_html=True)
-    else:
-        # Light theme CSS
-        st.markdown("""
-        <style>
-        .stApp {
-            background-color: white;
-            color: black;
-        }
-        .stSidebar {
-            background-color: #F0F2F6;
-        }
-        .stDataFrame {
-            color: black;
-            background-color: white;
-        }
-        </style>
-        """, unsafe_allow_html=True)
-
 def main():
-    toggle_theme()
     st.title("📈 Advanced Financial Analysis Platform")
     st.markdown("---")
     
@@ -958,7 +906,7 @@ def display_technical_analysis_tab(data):
                     if indicator_details:
                         indicator_df = pd.DataFrame(indicator_details)
                         st.dataframe(indicator_df, use_container_width=True)
-                    
+                
                 # Pattern recognition
                 st.subheader("🔍 Pattern Recognition")
                 

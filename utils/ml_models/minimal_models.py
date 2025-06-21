@@ -12,6 +12,7 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import mean_squared_error, r2_score
 from sklearn.model_selection import train_test_split
 import streamlit as st
+from xgboost import XGBRegressor
 
 class MinimalModelManager:
     """Minimal ML Model Manager with core scikit-learn models only"""
@@ -27,7 +28,16 @@ class MinimalModelManager:
                 'K-Nearest Neighbors': KNeighborsRegressor(n_neighbors=5)
             },
             'Ensemble Methods': {
-                'Random Forest': RandomForestRegressor(n_estimators=100, random_state=42)
+                'Random Forest': RandomForestRegressor(n_estimators=100, random_state=42),
+                'XGBoost': XGBRegressor(
+                    n_estimators=100,
+                    max_depth=6,
+                    learning_rate=0.1,
+                    subsample=0.8,
+                    colsample_bytree=0.8,
+                    random_state=42,
+                    n_jobs=-1
+                )
             },
             'Clustering': {
                 'K-Means': KMeans(n_clusters=3, random_state=42)
@@ -241,7 +251,7 @@ class MinimalModelManager:
                 'next_price': data['Close'].iloc[-1],
                 'confidence': 100 - (np.mean(anomalies) * 100),
                 'rmse': 0,
-                'accuracy': 100 - (np.mean(anomalies) * 100)  # Add this line
+                'accuracy': 100 - (np.mean(anomalies) * 100)
             }
             
             return results
@@ -274,7 +284,7 @@ class MinimalModelManager:
                 'next_price': data['Close'].iloc[-1],
                 'confidence': 50,
                 'rmse': 0,
-                'accuracy': float(np.sum(model.explained_variance_ratio_)) * 100  # Add this line
+                'accuracy': float(np.sum(model.explained_variance_ratio_)) * 100
             }
             
             return results

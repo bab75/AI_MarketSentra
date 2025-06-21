@@ -282,14 +282,22 @@ class DataProcessor:
             if data is None or data.empty:
                 return None
             
-            # Resample to weekly data (W = week ending on Sunday)
-            weekly_data = data.resample('W').agg({
-                'Open': 'first',
-                'High': 'max', 
-                'Low': 'min',
-                'Close': 'last',
-                'Volume': 'sum'
-            }).dropna()
+            # Group by week and use actual last date of data for each week
+            weekly_groups = data.groupby(pd.Grouper(freq='W'))
+            weekly_data_list = []
+            for week_end, group in weekly_groups:
+                if not group.empty:
+                    actual_end_date = group.index.max()  # Actual last date for this week
+                    week_summary = {
+                        'Date': actual_end_date,
+                        'Open': group['Open'].iloc[0],
+                        'High': group['High'].max(),
+                        'Low': group['Low'].min(),
+                        'Close': group['Close'].iloc[-1],
+                        'Volume': group['Volume'].sum()
+                    }
+                    weekly_data_list.append(week_summary)
+            weekly_data = pd.DataFrame(weekly_data_list).set_index('Date')
             
             # Add weekly technical indicators
             weekly_data['Weekly_Return'] = weekly_data['Close'].pct_change() * 100

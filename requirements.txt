@@ -11,3 +11,5 @@ statsmodels>=0.14.4
 pyyaml>=6.0.2
 joblib
 XGBoost
+lightgbm>=4.0.0
+catboost>=1.2.0

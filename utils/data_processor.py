@@ -304,7 +304,7 @@ class DataProcessor:
     
     def create_monthly_aggregation(self, data):
         """
-        Create monthly aggregated data
+        Create monthly aggregated data using actual last date for each month
         
         Args:
             data (pandas.DataFrame): Daily stock data
@@ -316,14 +316,22 @@ class DataProcessor:
             if data is None or data.empty:
                 return None
             
-            # Resample to monthly data (ME = month end)
-            monthly_data = data.resample('ME').agg({
-                'Open': 'first',
-                'High': 'max', 
-                'Low': 'min',
-                'Close': 'last',
-                'Volume': 'sum'
-            }).dropna()
+            # Group by year and month to handle monthly aggregation
+            monthly_groups = data.groupby([data.index.year, data.index.month])
+            monthly_data = []
+            for (year, month), group in monthly_groups:
+                month_end_date = group.index.max()  # Actual last date for this month
+                month_summary = {
+                    'Date': month_end_date,
+                    'Open': group['Open'].iloc[0],
+                    'High': group['High'].max(),
+                    'Low': group['Low'].min(),
+                    'Close': group['Close'].iloc[-1],
+                    'Volume': group['Volume'].sum()
+                }
+                monthly_data.append(month_summary)
+            
+            monthly_data = pd.DataFrame(monthly_data).set_index('Date')
             
             # Add monthly technical indicators
             monthly_data['Monthly_Return'] = monthly_data['Close'].pct_change() * 100

@@ -359,8 +359,8 @@ class DataProcessor:
                 'Volume': 'sum'
             })
             
-            # Set index to the actual last date of each year
-            yearly_data.index = data.groupby(data.index.year).apply(lambda x: x.index.max())
+            # Set index to the actual last date of each year, ensuring datetime index
+            yearly_data.index = pd.to_datetime(data.groupby(data.index.year).apply(lambda x: x.index.max()))
             
             # Add yearly technical indicators
             yearly_data['Yearly_Return'] = yearly_data['Close'].pct_change() * 100

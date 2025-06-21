@@ -395,7 +395,7 @@ def display_raw_data_tab(data):
     
     symbol = st.session_state.get('symbol', 'Stock')
     fig.update_layout(
-        title="Stock Price Chart",
+        title=f"{symbol} Stock Price Chart",
         xaxis_title="Date",
         yaxis_title="Price ($)",
         height=500

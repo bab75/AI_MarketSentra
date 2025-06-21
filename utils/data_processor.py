@@ -121,7 +121,7 @@ class DataProcessor:
     
     def calculate_bollinger_bands(self, prices, period=20, std_dev=2):
         """Calculate Bollinger Bands"""
-        middle = prices.rolling(window=period).mean()
+        middle = prices rolling(window=period).mean()
         std = prices.rolling(window=period).std()
         upper = middle + (std * std_dev)
         lower = middle - (std * std_dev)
@@ -338,7 +338,7 @@ class DataProcessor:
     
     def create_yearly_aggregation(self, data):
         """
-        Create yearly aggregated data
+        Create yearly aggregated data using actual last date for each year
         
         Args:
             data (pandas.DataFrame): Daily stock data
@@ -350,17 +350,22 @@ class DataProcessor:
             if data is None or data.empty:
                 return None
             
-            # Group by year and aggregate using the last available date
-            yearly_data = data.groupby(data.index.year).agg({
-                'Open': 'first',
-                'High': 'max', 
-                'Low': 'min',
-                'Close': 'last',
-                'Volume': 'sum'
-            })
+            # Group by year and use actual last date of data for each year
+            yearly_groups = data.groupby(data.index.year)
+            yearly_data = []
+            for year, group in yearly_groups:
+                year_end_date = group.index.max()  # Actual last date for this year
+                year_summary = {
+                    'Date': year_end_date,
+                    'Open': group['Open'].iloc[0],
+                    'High': group['High'].max(),
+                    'Low': group['Low'].min(),
+                    'Close': group['Close'].iloc[-1],
+                    'Volume': group['Volume'].sum()
+                }
+                yearly_data.append(year_summary)
             
-            # Set index to the actual last date of each year, ensuring datetime index
-            yearly_data.index = pd.to_datetime(data.groupby(data.index.year).apply(lambda x: x.index.max()))
+            yearly_data = pd.DataFrame(yearly_data).set_index('Date')
             
             # Add yearly technical indicators
             yearly_data['Yearly_Return'] = yearly_data['Close'].pct_change() * 100

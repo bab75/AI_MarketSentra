@@ -10,3 +10,4 @@ ta>=0.11.0
 statsmodels>=0.14.4
 pyyaml>=6.0.2
 joblib
+XGBoost

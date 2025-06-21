@@ -29,7 +29,7 @@ class DataLoader:
             if period:
                 data = ticker.history(period=period)
             else:
-                data = ticker.history(start=start_date, end=end_date)
+                data = ticker.history(start=start_date, end=end_date + pd.Timedelta(days=1)) # Add 1 day to end_date to make it inclusive (Yahoo Finance end is exclusive)
             
             if data.empty:
                 return None

@@ -37,6 +37,8 @@ if 'symbol' not in st.session_state:
     st.session_state.symbol = ""
 if 'period' not in st.session_state:
     st.session_state.period = "1y"
+if 'selected_indicators' not in st.session_state:
+    st.session_state.selected_indicators = []
 
 # Initialize utility classes
 data_loader = DataLoader()
@@ -318,12 +320,10 @@ def display_raw_data_tab(data):
             st.metric("Daily Change", "N/A")
     
     with col3:
-        #st.metric("Period High", f"${data['High'].max():.2f}")-old code changed to have date
         high_date = data.loc[data['High'] == data['High'].max()].index[0].strftime('%b %d, %Y')
         st.metric("Period High", f"${data['High'].max():.2f}")
         st.caption(f"on {high_date}")
     with col4:
-        # st.metric("Period Low", f"${data['Low'].min():.2f}")- old code changed to have date
         low_date = data.loc[data['Low'] == data['Low'].min()].index[0].strftime('%b %d, %Y')
         st.metric("Period Low", f"${data['Low'].min():.2f}")
         st.caption(f"on {low_date}")
@@ -749,20 +749,25 @@ def display_technical_analysis_tab(data):
     
     # Create columns for indicator selection
     cols = st.columns(len(indicator_categories))
-    selected_indicators = []
     
     for i, (category, indicators) in enumerate(indicator_categories.items()):
         with cols[i]:
             st.write(f"**{category}**")
-            category_selected = []
-            
             for indicator in indicators:
-                if st.checkbox(indicator, key=f"indicator_{indicator}"):
-                    category_selected.append(indicator)
-                    selected_indicators.append(indicator)
+                # Use session state to maintain checkbox state
+                is_checked = indicator in st.session_state.selected_indicators
+                if st.checkbox(indicator, key=f"indicator_{indicator}", value=is_checked):
+                    if indicator not in st.session_state.selected_indicators:
+                        st.session_state.selected_indicators.append(indicator)
+                else:
+                    if indicator in st.session_state.selected_indicators:
+                        st.session_state.selected_indicators.remove(indicator)
             
-            # Quick select all for category
+            # Select All button for category
             if st.button(f"Select All {category}", key=f"select_all_{i}"):
+                for indicator in indicators:
+                    if indicator not in st.session_state.selected_indicators:
+                        st.session_state.selected_indicators.append(indicator)
                 st.rerun()
     
     # Quick preset buttons
@@ -771,21 +776,25 @@ def display_technical_analysis_tab(data):
     
     with preset_cols[0]:
         if st.button("📈 Trend Analysis", type="secondary"):
-            selected_indicators = ['SMA_20', 'SMA_50', 'EMA_20', 'BB', 'MACD', 'VWAP']
+            st.session_state.selected_indicators = ['SMA_20', 'SMA_50', 'EMA_20', 'BB', 'MACD', 'VWAP']
+            st.rerun()
     
     with preset_cols[1]:
         if st.button("⚡ Momentum Signals", type="secondary"):
-            selected_indicators = ['RSI', 'Stoch_K', 'Williams_R', 'CCI', 'MFI']
+            st.session_state.selected_indicators = ['RSI', 'Stoch_K', 'Williams_R', 'CCI', 'MFI']
+            st.rerun()
     
     with preset_cols[2]:
         if st.button("📊 Volume Analysis", type="secondary"):
-            selected_indicators = ['Volume', 'OBV', 'Volume_SMA', 'VWAP']
+            st.session_state.selected_indicators = ['Volume', 'OBV', 'Volume_SMA', 'VWAP']
+            st.rerun()
     
     with preset_cols[3]:
         if st.button("🎯 Complete Setup", type="secondary"):
-            selected_indicators = ['SMA_20', 'SMA_50', 'BB', 'RSI', 'MACD', 'Volume', 'VWAP']
+            st.session_state.selected_indicators = ['SMA_20', 'SMA_50', 'BB', 'RSI', 'MACD', 'Volume', 'VWAP']
+            st.rerun()
     
-    if selected_indicators:
+    if st.session_state.selected_indicators:
         # Calculate indicators
         with st.spinner("Calculating technical indicators..."):
             try:
@@ -818,7 +827,7 @@ def display_technical_analysis_tab(data):
                 # Create and display technical analysis chart
                 fig = technical_indicators.create_technical_analysis_chart(
                     chart_data, 
-                    selected_indicators, 
+                    st.session_state.selected_indicators, 
                     f"Technical Analysis - {st.session_state.symbol if st.session_state.symbol else 'Stock'}"
                 )
                 fig.update_layout(height=chart_height)
@@ -882,7 +891,7 @@ def display_technical_analysis_tab(data):
                     
                     # Create indicator details table
                     indicator_details = []
-                    for indicator in selected_indicators:
+                    for indicator in st.session_state.selected_indicators:
                         matching_columns = [col for col in latest_values.columns if indicator.replace('_', '') in col.replace('_', '') or indicator in col]
                         
                         for col in matching_columns:
@@ -953,7 +962,7 @@ def display_technical_analysis_tab(data):
                     if st.button("📊 Export Indicator Data"):
                         # Create downloadable CSV
                         export_data = analyzed_data[['Open', 'High', 'Low', 'Close', 'Volume'] + 
-                                                  [col for col in analyzed_data.columns if any(ind in col for ind in selected_indicators)]]
+                                                  [col for col in analyzed_data.columns if any(ind in col for ind in st.session_state.selected_indicators)]]
                         csv = export_data.to_csv()
                         st.download_button(
                             label="Download CSV",
@@ -1178,6 +1187,7 @@ def clear_data():
     st.session_state.processed_data = None
     st.session_state.symbol = ""
     st.session_state.period = "1y"
+    st.session_state.selected_indicators = []
 
 if __name__ == "__main__":
     main()

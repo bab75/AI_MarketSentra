@@ -14,7 +14,3 @@ XGBoost
 lightgbm>=4.0.0
 catboost>=1.2.0
 tensorflow>=2.15.0
-keras>=3.0.0
-gensim>=4.3.0  # For Word2Vec, GloVe
-transformers>=4.35.0  # For BERT, GPT, T5
-torch>=2.1.0  # For advanced models

@@ -334,7 +334,7 @@ def display_raw_data_tab(data):
     
     # Expandable data view
     with st.expander("📋 View Raw Data"):
-        st.dataframe(data.tail(100), use_container_width=True)
+        st.dataframe(data, use_container_width=True)
 
 def display_pl_analysis_tab(data):
     """Display profit and loss analysis with different time periods"""

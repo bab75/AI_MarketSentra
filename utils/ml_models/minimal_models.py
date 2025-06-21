@@ -271,7 +271,7 @@ class MinimalModelManager:
                 'total_variance': float(np.sum(model.explained_variance_ratio_)),
                 'next_price': data['Close'].iloc[-1],
                 'confidence': 50,
-                'rmse': 0
+                'rmse': 0,
                 'accuracy': float(np.sum(model.explained_variance_ratio_)) * 100  # Add this line
             }
             

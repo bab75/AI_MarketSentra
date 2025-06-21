@@ -60,7 +60,7 @@ def toggle_theme():
     
     # Apply theme CSS
     if st.session_state.get('dark_theme', False):
-        # Dark theme CSS with white text
+        # Enhanced dark theme CSS with broader text color coverage
         st.markdown("""
         <style>
         .stApp {
@@ -71,6 +71,11 @@ def toggle_theme():
             background-color: #262730;
             color: white;
         }
+        /* Global text override */
+        body, p, div, span, label, h1, h2, h3, h4, h5, h6 {
+            color: white !important;
+        }
+        /* Specific component styling */
         .stSelectbox label, .stTextInput label, .stRadio label, .stCheckbox label, .stSlider label {
             color: white !important;
         }
@@ -81,11 +86,6 @@ def toggle_theme():
             color: white;
             background-color: #262730;
         }
-        /* Ensure all text elements inherit white color */
-        * {
-            color: white !important;
-        }
-        /* Override specific elements if needed */
         .stButton button {
             color: white !important;
             background-color: #1A1D23;
@@ -96,6 +96,13 @@ def toggle_theme():
         }
         .stMetric {
             color: white;
+        }
+        /* Plotly chart text override */
+        .plotly .modebar, .plotly .gtitle, .plotly .xtitle, .plotly .ytitle, .plotly .legendtext {
+            color: white !important;
+        }
+        .plotly .cartesianlayer .trace text {
+            fill: white !important;
         }
         </style>
         """, unsafe_allow_html=True)
@@ -413,7 +420,10 @@ def display_raw_data_tab(data):
         title="Stock Price Chart",
         xaxis_title="Date",
         yaxis_title="Price ($)",
-        height=500
+        height=500,
+        plot_bgcolor='#1A1D23',
+        paper_bgcolor='#1A1D23',
+        font_color='white'
     )
     
     st.plotly_chart(fig, use_container_width=True)
@@ -678,7 +688,10 @@ def display_ml_predictions_tab(data):
                             title=f"{selected_model} Predictions vs Actual",
                             xaxis_title="Date",
                             yaxis_title="Price ($)",
-                            height=400
+                            height=400,
+                            plot_bgcolor='#1A1D23',
+                            paper_bgcolor='#1A1D23',
+                            font_color='white'
                         )
                         
                         st.plotly_chart(fig, use_container_width=True)
@@ -900,7 +913,10 @@ def display_technical_analysis_tab(data):
                     st.session_state.selected_indicators, 
                     f"Technical Analysis - {st.session_state.symbol if st.session_state.symbol else 'Stock'}"
                 )
-                fig.update_layout(height=chart_height)
+                fig.update_layout(height=chart_height,
+                                plot_bgcolor='#1A1D23',
+                                paper_bgcolor='#1A1D23',
+                                font_color='white')
                 st.plotly_chart(fig, use_container_width=True)
                 
                 # Current indicator readings

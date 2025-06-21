@@ -13,6 +13,8 @@ from sklearn.metrics import mean_squared_error, r2_score
 from sklearn.model_selection import train_test_split
 import streamlit as st
 from xgboost import XGBRegressor
+from lightgbm import LGBMRegressor
+from catboost import CatBoostRegressor
 
 class MinimalModelManager:
     """Minimal ML Model Manager with core scikit-learn models only"""
@@ -37,6 +39,26 @@ class MinimalModelManager:
                     colsample_bytree=0.8,
                     random_state=42,
                     n_jobs=-1
+                ),
+                'LightGBM': LGBMRegressor(
+                    n_estimators=100,
+                    max_depth=6,
+                    learning_rate=0.1,
+                    num_leaves=31,
+                    subsample=0.8,
+                    colsample_bytree=0.8,
+                    random_state=42,
+                    verbose=-1,
+                    n_jobs=-1
+                ),
+                'CatBoost': CatBoostRegressor(
+                    iterations=100,
+                    depth=6,
+                    learning_rate=0.1,
+                    l2_leaf_reg=3,
+                    random_seed=42,
+                    verbose=False,
+                    thread_count=-1
                 )
             },
             'Clustering': {

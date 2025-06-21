@@ -350,14 +350,17 @@ class DataProcessor:
             if data is None or data.empty:
                 return None
             
-            # Resample to yearly data (YE = year end)
-            yearly_data = data.resample('YE').agg({
+            # Group by year and aggregate using the last available date
+            yearly_data = data.groupby(data.index.year).agg({
                 'Open': 'first',
                 'High': 'max', 
                 'Low': 'min',
                 'Close': 'last',
                 'Volume': 'sum'
-            }).dropna()
+            })
+            
+            # Set index to the actual last date of each year
+            yearly_data.index = data.groupby(data.index.year).apply(lambda x: x.index.max())
             
             # Add yearly technical indicators
             yearly_data['Yearly_Return'] = yearly_data['Close'].pct_change() * 100

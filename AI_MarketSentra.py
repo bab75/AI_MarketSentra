@@ -167,7 +167,7 @@ def display_yfinance_interface():
     with col1:
         period_type = st.selectbox(
             "Period Type",
-            ["Predefined", "Custom Range"]
+            ["Predefined", "Custom Range"],
         index=1 if st.session_state.get('period_type', 'Predefined') == "Custom Range" else 0
         )
         st.session_state.period_type = period_type

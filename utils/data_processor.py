@@ -121,7 +121,7 @@ class DataProcessor:
     
     def calculate_bollinger_bands(self, prices, period=20, std_dev=2):
         """Calculate Bollinger Bands"""
-        middle = prices rolling(window=period).mean()
+        middle = prices.rolling(window=period).mean()
         std = prices.rolling(window=period).std()
         upper = middle + (std * std_dev)
         lower = middle - (std * std_dev)

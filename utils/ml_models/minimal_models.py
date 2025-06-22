@@ -188,7 +188,7 @@ class MinimalModelManager:
                 'rmse': float('inf')
             }
     
-    def _prepare_features(self, data, lookback=5):
+        def _prepare_features(self, data, lookback=5):
         """Prepare features for ML models"""
         try:
             features_df = data[['Open', 'High', 'Low', 'Close', 'Volume']].dropna()
@@ -217,8 +217,6 @@ class MinimalModelManager:
             st.error(f"Error preparing features: {str(e)}")
             return None, None
     
-   vistas de código
-
     def _train_supervised_model(self, data, category, model_name, **kwargs):
         """Train supervised learning models"""
         try:
@@ -233,7 +231,7 @@ class MinimalModelManager:
                     'confidence': 0.0,
                     'rmse': float('inf')
                 }
-            
+                        
             X_train, X_test, y_train, y_test = train_test_split(
                 X, y, test_size=0.2, random_state=42, shuffle=False
             )

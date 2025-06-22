@@ -66,21 +66,25 @@ class DeepLearningModels:
                 st.error("No valid data after removing NaN values")
                 return None, None, None
                 
-            # Scale all features
-            scaler = MinMaxScaler(feature_range=(0, 1))
-            scaled_data = scaler.fit_transform(data[required_cols])
-            self.scalers['Close'] = scaler  # Store scaler for inverse transform
+            # Scale all features for input
+            input_scaler = MinMaxScaler(feature_range=(0, 1))
+            scaled_data = input_scaler.fit_transform(data[required_cols])
+            
+            # Scale Close separately for target
+            target_scaler = MinMaxScaler(feature_range=(0, 1))
+            scaled_close = target_scaler.fit_transform(data['Close'].values.reshape(-1, 1))
+            self.scalers['Close'] = target_scaler  # Store Close scaler for inverse transform
                 
             X, y = [], []
             if model_name == 'Simple Neural Network':
                 lookback = 5
                 for i in range(lookback, len(scaled_data)):
                     X.append(scaled_data[i-lookback:i].flatten())  # 2D: (samples, lookback * features)
-                    y.append(scaled_data[i, data.columns.get_loc('Close')])  # Target is Close
+                    y.append(scaled_close[i, 0])  # Target is scaled Close
             else:
                 for i in range(sequence_length, len(scaled_data)):
                     X.append(scaled_data[i-sequence_length:i])  # 3D: (samples, timesteps, features)
-                    y.append(scaled_data[i, data.columns.get_loc('Close')])
+                    y.append(scaled_close[i, 0])  # Target is scaled Close
             
             X, y = np.array(X), np.array(y)
             if np.any(np.isnan(X)) or np.any(np.isnan(y)):
@@ -91,7 +95,7 @@ class DeepLearningModels:
             if model_name in ['LSTM', 'GRU', 'CNN-LSTM']:
                 X = X.reshape((X.shape[0], X.shape[1], len(required_cols)))
             
-            return X, y, scaler
+            return X, y, target_scaler
             
         except Exception as e:
             st.error(f"Error preparing sequences: {str(e)}")

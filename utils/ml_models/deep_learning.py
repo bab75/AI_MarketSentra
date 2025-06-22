@@ -11,7 +11,6 @@ from tensorflow.keras.optimizers import Adam, RMSprop
 from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.metrics import mean_squared_error, r2_score
-from sklearn.model_selection import train_test_split
 import streamlit as st
 
 class DeepLearningModels:
@@ -28,26 +27,24 @@ class DeepLearningModels:
         np.random.seed(42)
     
     def get_available_models(self):
-        """Return dictionary of available deep learning models"""
-        return {
-            'Deep Learning Models': [
-                'LSTM', 'GRU', 'CNN-LSTM', 'Bidirectional LSTM',
-                'Deep Neural Network', 'Attention LSTM', 'Transformer',
-                'Stacked LSTM', 'CNN', 'Autoencoder'
-            ]
-        }
+        """Return list of available deep learning models"""
+        return [
+            'LSTM', 'GRU', 'CNN-LSTM', 'Bidirectional LSTM',
+            'Deep Neural Network', 'Attention LSTM', 'Transformer',
+            'Stacked LSTM', 'CNN', 'Autoencoder'
+        ]
     
     def prepare_sequences(self, data, sequence_length=60, target_col='Close'):
         """
         Prepare sequences for time series prediction
         
         Args:
-            data (DataFrame): Input data with OHLCV columns
+            data (DataFrame): Input data
             sequence_length (int): Length of input sequences
             target_col (str): Name of target column
             
         Returns:
-            tuple: (X, y, scaler)
+            tuple: (X, y) sequences for training
         """
         try:
             # Scale the data
@@ -56,15 +53,16 @@ class DeepLearningModels:
             self.scalers[target_col] = scaler
             
             X, y = [], []
+            
             for i in range(sequence_length, len(scaled_data)):
                 X.append(scaled_data[i-sequence_length:i])
                 y.append(scaled_data[i, data.columns.get_loc(target_col)])
             
-            return np.array(X), np.array(y), scaler
+            return np.array(X), np.array(y)
             
         except Exception as e:
             st.error(f"Error preparing sequences: {str(e)}")
-            return None, None, None
+            return None, None
     
     def build_lstm_model(self, input_shape, units=50, dropout_rate=0.2):
         """Build LSTM model"""
@@ -148,13 +146,18 @@ class DeepLearningModels:
         """Build LSTM model with attention mechanism"""
         inputs = Input(shape=input_shape)
         
+        # LSTM layers
         lstm_out = LSTM(lstm_units, return_sequences=True)(inputs)
         lstm_out = LSTM(lstm_units, return_sequences=True)(lstm_out)
         
+        # Attention layer
         attention_out = MultiHeadAttention(num_heads=4, key_dim=lstm_units)(lstm_out, lstm_out)
         attention_out = LayerNormalization()(attention_out + lstm_out)
         
+        # Global average pooling
         pooled = tf.keras.layers.GlobalAveragePooling1D()(attention_out)
+        
+        # Output layers
         dense_out = Dense(25, activation='relu')(pooled)
         outputs = Dense(1)(dense_out)
         
@@ -166,16 +169,21 @@ class DeepLearningModels:
         """Build Transformer model"""
         inputs = Input(shape=input_shape)
         
+        # Positional encoding
         x = Dense(d_model)(inputs)
         
+        # Transformer blocks
         for _ in range(num_layers):
+            # Multi-head attention
             attention_out = MultiHeadAttention(num_heads=num_heads, key_dim=d_model)(x, x)
             attention_out = LayerNormalization()(attention_out + x)
             
+            # Feed forward network
             ffn_out = Dense(d_model * 2, activation='relu')(attention_out)
             ffn_out = Dense(d_model)(ffn_out)
             x = LayerNormalization()(ffn_out + attention_out)
         
+        # Global average pooling and output
         pooled = tf.keras.layers.GlobalAveragePooling1D()(x)
         outputs = Dense(1)(pooled)
         
@@ -221,15 +229,19 @@ class DeepLearningModels:
     
     def build_autoencoder_model(self, input_shape, encoding_dim=32):
         """Build Autoencoder model for feature learning"""
+        # Encoder
         input_layer = Input(shape=input_shape)
         encoded = LSTM(encoding_dim)(input_layer)
         
+        # Decoder
         decoded = tf.keras.layers.RepeatVector(input_shape[0])(encoded)
         decoded = LSTM(input_shape[1], return_sequences=True)(decoded)
         
+        # Autoencoder
         autoencoder = Model(input_layer, decoded)
         autoencoder.compile(optimizer='adam', loss='mse')
         
+        # Prediction model
         predictor = Sequential([
             Input(shape=input_shape),
             LSTM(encoding_dim),
@@ -261,6 +273,7 @@ class DeepLearningModels:
         try:
             input_shape = (X_train.shape[1], X_train.shape[2])
             
+            # Build model based on name
             if model_name == 'LSTM':
                 model = self.build_lstm_model(input_shape)
             elif model_name == 'GRU':
@@ -281,17 +294,20 @@ class DeepLearningModels:
                 model = self.build_cnn_model(input_shape)
             elif model_name == 'Autoencoder':
                 models = self.build_autoencoder_model(input_shape)
+                # Train autoencoder first
                 models['autoencoder'].fit(X_train, X_train, epochs=epochs//2, 
                                         batch_size=batch_size, verbose=0)
                 model = models['predictor']
             else:
                 raise ValueError(f"Model {model_name} not implemented")
             
+            # Callbacks
             callbacks = [
                 EarlyStopping(monitor='val_loss', patience=10, restore_best_weights=True),
                 ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=5, min_lr=1e-7)
             ]
             
+            # Train model
             history = model.fit(
                 X_train, y_train,
                 epochs=epochs,
@@ -301,30 +317,29 @@ class DeepLearningModels:
                 verbose=0
             )
             
+            # Evaluate model
             results = {'model': model, 'history': history.history}
             
             if X_test is not None and y_test is not None:
                 predictions = model.predict(X_test, verbose=0)
-                mse = mean_squared_error(y_test, predictions)
-                rmse = float(np.sqrt(mse))
-                r2 = float(r2_score(y_test, predictions) * 100)
-                accuracy = max(0, min(100, r2))
-            else:
-                # Use validation metrics from last epoch
-                rmse = float(np.sqrt(history.history['val_loss'][-1]))
-                accuracy = 50.0  # Fallback if no test data
                 
-                # Estimate R² from validation loss (approximation)
-                y_pred = model.predict(X_train, verbose=0)
-                r2 = float(r2_score(y_train, y_pred) * 100)
-                accuracy = max(0, min(100, r2))
+                mse = mean_squared_error(y_test, predictions)
+                rmse = np.sqrt(mse)
+                r2 = r2_score(y_test, predictions)
+                
+                # Calculate percentage accuracy
+                tolerance = 0.05
+                accuracy = np.mean(np.abs((predictions.flatten() - y_test) / y_test) <= tolerance) * 100
+                
+                results.update({
+                    'predictions': predictions.flatten(),
+                    'mse': mse,
+                    'rmse': rmse,
+                    'r2': r2,
+                    'accuracy': accuracy
+                })
             
-            results.update({
-                'rmse': rmse,
-                'accuracy': accuracy,
-                'confidence': accuracy  # Align with minimal_models.py
-            })
-            
+            # Store trained model
             self.trained_models[model_name] = model
             self.model_performances[model_name] = results
             
@@ -332,7 +347,7 @@ class DeepLearningModels:
             
         except Exception as e:
             st.error(f"Error training {model_name}: {str(e)}")
-            return {'error': str(e)}
+            return None
     
     def predict_next_price(self, model_name, features, scaler_key='Close'):
         """
@@ -352,82 +367,25 @@ class DeepLearningModels:
             
             model = self.trained_models[model_name]
             
+            # Reshape features for prediction
             features_reshaped = features.reshape(1, features.shape[0], features.shape[1])
-            prediction = model.predict(features_reshaped, verbose=0)[0, 0]
             
+            # Make prediction
+            prediction = model.predict(features_reshaped, verbose=0)
+            
+            # Inverse transform if scaler is available
             if scaler_key in self.scalers:
+                # Create dummy array for inverse transform
                 dummy = np.zeros((1, len(self.scalers[scaler_key].scale_)))
-                dummy[0, self.scalers[scaler_key].feature_names_in_.tolist().index(scaler_key)] = prediction
-                prediction_scaled = self.scalers[scaler_key].inverse_transform(dummy)[0, self.scalers[scaler_key].feature_names_in_.tolist().index(scaler_key)]
-                return float(prediction_scaled)
+                dummy[0, 0] = prediction[0, 0]  # Assuming target is first column
+                prediction_scaled = self.scalers[scaler_key].inverse_transform(dummy)
+                return prediction_scaled[0, 0]
             
-            return float(prediction)
+            return prediction[0, 0]
             
         except Exception as e:
             st.error(f"Error predicting with {model_name}: {str(e)}")
             return None
-    
-    def train_and_predict(self, data, model_name, **kwargs):
-        """
-        Train a deep learning model and predict next price
-        
-        Args:
-            data (DataFrame): Input data with OHLCV columns
-            model_name (str): Name of the model to train
-            **kwargs: Additional parameters (e.g., sequence_length, epochs)
-            
-        Returns:
-            dict: Training results with predictions and metrics
-        """
-        try:
-            if model_name not in self.get_available_models()['Deep Learning Models']:
-                return {'error': f'Model {model_name} not found'}
-            
-            # Prepare data
-            sequence_length = kwargs.get('sequence_length', 60)
-            X, y, scaler = self.prepare_sequences(data, sequence_length=sequence_length)
-            if X is None or y is None or scaler is None:
-                return {'error': 'Could not prepare data'}
-            
-            # Split data
-            X_train, X_test, y_train, y_test = train_test_split(
-                X, y, test_size=0.2, random_state=42, shuffle=False
-            )
-            
-            # Train model
-            results = self.train_model(
-                model_name,
-                X_train,
-                y_train,
-                X_test=X_test,
-                y_test=y_test,
-                epochs=kwargs.get('epochs', 50),
-                batch_size=kwargs.get('batch_size', 32),
-                validation_split=kwargs.get('validation_split', 0.2)
-            )
-            
-            if 'error' in results:
-                return results
-            
-            # Predict next price
-            last_sequence = X[-1]
-            next_price = self.predict_next_price(model_name, last_sequence)
-            if next_price is None:
-                return {'error': f'Failed to predict next price with {model_name}'}
-            
-            # Compile results
-            return {
-                'model_name': model_name,
-                'category': 'Deep Learning Models',
-                'next_price': float(next_price),
-                'accuracy': results.get('accuracy', 50.0),
-                'confidence': results.get('confidence', 50.0),
-                'rmse': results.get('rmse', 0.0)
-            }
-            
-        except Exception as e:
-            st.error(f"Error in train_and_predict for {model_name}: {str(e)}")
-            return {'error': str(e)}
     
     def get_model_config(self, model_name):
         """

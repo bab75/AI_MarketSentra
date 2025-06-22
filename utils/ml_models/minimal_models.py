@@ -361,7 +361,7 @@ class MinimalModelManager:
                         'rmse': float('inf')
                     }
             
-            features = data[['Open', 'High', 'Low', 'Close', 'Volume]].dropna()
+            features = data[['Open', 'High', 'Low', 'Close', 'Volume']].dropna()
             scaler = StandardScaler()
             scaled_features = scaler.fit_transform(features)
             model = self.models['Anomaly Detection'][model_name]

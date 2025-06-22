@@ -303,7 +303,7 @@ class DeepLearningModels:
         
         return float(prediction[0][0])
         
-    except Exception as e:
+        except Exception as e:
         st.error(f"Error predicting with {model_name}: {str(e)}")
         return None
     

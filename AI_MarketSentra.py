@@ -168,7 +168,7 @@ def display_yfinance_interface():
         period_type = st.selectbox(
             "Period Type",
             ["Predefined", "Custom Range"],
-            index=1 if st.session_state.get('period_type', 'Predefined') == "Custom Range" else 0
+        index=1 if st.session_state.get('period_type', 'Predefined') == "Custom Range" else 0
         )
         st.session_state.period_type = period_type
     
@@ -362,6 +362,7 @@ def display_raw_data_tab(data):
     with col1:
         current_price = data['Close'].iloc[-1]
         current_date = data.index[-1].strftime('%b %d, %Y')
+        #st.metric("Current Price", f"${current_price:.2f}")
         symbol = st.session_state.get('symbol', 'Stock')
         st.metric(f"{symbol} Current Price", f"${current_price:.2f}")
         st.caption(f"as of {current_date}")
@@ -623,14 +624,9 @@ def display_ml_predictions_tab(data):
     if st.button("🚀 Train & Predict", type="primary"):
         with st.spinner(f"Training {selected_model} model..."):
             try:
-                # Validate data length
-                if len(data) < 30:
-                    st.error("❌ Insufficient data for ML predictions. Need at least 30 days of data.")
-                    return
-                
                 # Train model and make predictions
                 model_results = model_manager.train_and_predict(
-                    data, selected_category, selected_model, sequence_length=30, epochs=50
+                    data, selected_category, selected_model
                 )
                 
                 if model_results:

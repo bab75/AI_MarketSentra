@@ -80,7 +80,8 @@ class MinimalModelManager:
             },
             'Anomaly Detection': {
                 'Isolation Forest': IsolationForest(contamination=0.1, random_state=42),
-                'One-Class SVM': OneClassSVM(nu=0.1, kernel='rbf', gamma='scale')
+                'One-Class SVM': OneClassSVM(nu=0.1, kernel='rbf', gamma='scale'),
+                'Autoencoder': 'Autoencoder'
             },
             'Dimensionality Reduction': {
                 'PCA': PCA(n_components=2)
@@ -341,6 +342,22 @@ class MinimalModelManager:
     def _train_anomaly_model(self, data, model_name, **kwargs):
         """Train anomaly detection models"""
         try:
+            if model_name == 'Autoencoder':
+                # Route to deep learning manager
+                try:
+                    return self.deep_learning_manager.train_and_predict(data, model_name, **kwargs)
+                except Exception as e:
+                    st.error(f"Autoencoder training failed in DeepLearningModels: {str(e)}")
+                    return {
+                        'error': f'Autoencoder training failed: {str(e)}',
+                        'model_name': model_name,
+                        'category': 'Anomaly Detection',
+                        'next_price': 0.0,
+                        'accuracy': 0.0,
+                        'confidence': 0.0,
+                        'rmse': float('inf')
+                    }
+            
             features = data[['Open', 'High', 'Low', 'Close', 'Volume']].dropna()
             scaler = StandardScaler()
             scaled_features = scaler.fit_transform(features)
@@ -380,6 +397,7 @@ class MinimalModelManager:
             return results
             
         except Exception as e:
+            st.error(f"Anomaly detection error for {model_name}: {str(e)}")
             return {
                 'error': f'Anomaly detection error: {str(e)}',
                 'model_name': model_name,
@@ -452,7 +470,7 @@ class MinimalModelManager:
                     'rmse': 0.04
                 }
             elif model_name == 'Exponential Smoothing':
-                next_price = current_price * 1.01  # 1% increase prediction  
+                next_price = current_price * 1.01  # 1% increase
                 return {
                     'model_name': 'Exponential Smoothing',
                     'category': 'Time Series Specialized',
@@ -475,74 +493,6 @@ class MinimalModelManager:
                 return {'error': f'Time series model {model_name} not implemented'}
         except Exception as e:
             return {'error': f'Time series error: {str(e)}'}
-
-    def _train_autoencoder_direct(self, data, **kwargs):
-    """Direct Autoencoder implementation for anomaly detection"""
-    try:
-        import tensorflow as tf
-        from tensorflow.keras.models import Model
-        from tensorflow.keras.layers import Input, Dense
-        from sklearn.preprocessing import MinMaxScaler
-        
-        # Prepare data
-        features = data[['Open', 'High', 'Low', 'Close', 'Volume']].dropna()
-        scaler = MinMaxScaler()
-        scaled_data = scaler.fit_transform(features)
-        
-        # Build simple autoencoder
-        input_dim = scaled_data.shape[1]
-        input_layer = Input(shape=(input_dim,))
-        encoded = Dense(3, activation='relu')(input_layer)  # Bottleneck
-        decoded = Dense(input_dim, activation='sigmoid')(encoded)
-        
-        autoencoder = Model(input_layer, decoded)
-        autoencoder.compile(optimizer='adam', loss='mse')
-        
-        # Train
-        autoencoder.fit(scaled_data, scaled_data, 
-                       epochs=50, batch_size=32, verbose=0)
-        
-        # Detect anomalies
-        reconstructed = autoencoder.predict(scaled_data, verbose=0)
-        reconstruction_errors = np.mean(np.square(scaled_data - reconstructed), axis=1)
-        threshold = np.percentile(reconstruction_errors, 90)  # Top 10% as anomalies
-        anomalies = reconstruction_errors > threshold
-        
-        # Predict next price
-        current_price = float(data['Close'].iloc[-1])
-        latest_error = reconstruction_errors[-1]
-        
-        if latest_error > threshold:  # Anomaly detected
-            next_price = current_price * 0.97  # 3% decrease
-            confidence = 70.0
-        else:  # Normal behavior
-            next_price = current_price * 1.02  # 2% increase
-            confidence = 85.0
-            
-        return {
-            'model_name': 'Autoencoder',
-            'category': 'Anomaly Detection',
-            'next_price': next_price,
-            'confidence': confidence,
-            'accuracy': float(100 - (np.mean(anomalies) * 100)),
-            'rmse': float(np.sqrt(np.mean(reconstruction_errors))),
-            'n_anomalies': int(np.sum(anomalies))
-        }
-        
-    except Exception as e:
-        return {
-            'error': f'Direct Autoencoder error: {str(e)}',
-            'model_name': 'Autoencoder',
-            'category': 'Anomaly Detection',
-            'next_price': 0.0,
-            'accuracy': 0.0,
-            'confidence': 0.0,
-            'rmse': float('inf')
-        }
-Then update the routing in _train_anomaly_model:
-
-if model_name == 'Autoencoder':
-    return self._train_autoencoder_direct(data, **kwargs)
     
     def get_global_performances(self):
         """Get all model performances"""

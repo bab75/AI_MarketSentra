@@ -81,7 +81,7 @@ class MinimalModelManager:
             'Anomaly Detection': {
                 'Isolation Forest': IsolationForest(contamination=0.1, random_state=42),
                 'One-Class SVM': OneClassSVM(nu=0.1, kernel='rbf', gamma='scale'),
-                'Autoencoder': 'Autoencoder'  # ADDED
+                'Autoencoder': 'Autoencoder'
             },
             'Dimensionality Reduction': {
                 'PCA': PCA(n_components=2)
@@ -154,7 +154,7 @@ class MinimalModelManager:
                     'error': f'Model {model_name} not found in {category}',
                     'model_name': model_name,
                     'category': category,
-                    'next_price': float,
+                    'next_price': 0.0,
                     'accuracy': 0.0,
                     'confidence': 0.0,
                     'rmse': float('inf')
@@ -344,7 +344,19 @@ class MinimalModelManager:
         try:
             if model_name == 'Autoencoder':
                 # Route to deep learning manager
-                return self.deep_learning_manager.train_and_predict(data, model_name, **kwargs)
+                try:
+                    return self.deep_learning_manager.train_and_predict(data, model_name, **kwargs)
+                except Exception as e:
+                    st.error(f"Autoencoder training failed in DeepLearningModels: {str(e)}")
+                    return {
+                        'error': f'Autoencoder training failed: {str(e)}',
+                        'model_name': model_name,
+                        'category': 'Anomaly Detection',
+                        'next_price': 0.0,
+                        'accuracy': 0.0,
+                        'confidence': 0.0,
+                        'rmse': float('inf')
+                    }
             
             features = data[['Open', 'High', 'Low', 'Close', 'Volume']].dropna()
             scaler = StandardScaler()
@@ -385,6 +397,7 @@ class MinimalModelManager:
             return results
             
         except Exception as e:
+            st.error(f"Anomaly detection error for {model_name}: {str(e)}")
             return {
                 'error': f'Anomaly detection error: {str(e)}',
                 'model_name': model_name,
@@ -457,7 +470,7 @@ class MinimalModelManager:
                     'rmse': 0.04
                 }
             elif model_name == 'Exponential Smoothing':
-                next_price = current_price * 1.01  # 1% increase prediction  
+                next_price = current_price * 1.01  # 1% increase
                 return {
                     'model_name': 'Exponential Smoothing',
                     'category': 'Time Series Specialized',

@@ -3,7 +3,7 @@ import pandas as pd
 from sklearn.linear_model import LinearRegression, Ridge, Lasso, ElasticNet, LogisticRegression
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.tree import DecisionTreeRegressor
-from sklearn.svm import SVR, OneClassSVM  # ADD OneClassSVM
+from sklearn.svm import SVR, OneClassSVM
 from sklearn.neighbors import KNeighborsRegressor
 from sklearn.cluster import KMeans
 from sklearn.ensemble import IsolationForest
@@ -80,7 +80,7 @@ class MinimalModelManager:
             },
             'Anomaly Detection': {
                 'Isolation Forest': IsolationForest(contamination=0.1, random_state=42),
-                'One-Class SVM': OneClassSVM(nu=0.1, kernel='rbf', gamma='scale')  # ADDED
+                'One-Class SVM': OneClassSVM(nu=0.1, kernel='rbf', gamma='scale')
             },
             'Dimensionality Reduction': {
                 'PCA': PCA(n_components=2)
@@ -356,14 +356,23 @@ class MinimalModelManager:
                 predictions = model.fit_predict(scaled_features)
                 anomalies = predictions == -1
             
+            # Calculate prediction based on anomaly detection
+            current_price = float(data['Close'].iloc[-1])
+            latest_prediction = predictions[-1]  # Last prediction (-1 or +1)
+            if latest_prediction == -1:  # Anomaly detected
+                next_price = current_price * 0.98  # 2% decrease
+                confidence = 60.0  # Lower confidence during anomalies
+            else:  # Normal behavior
+                next_price = current_price * 1.01  # 1% increase  
+                confidence = 85.0  # Higher confidence during normal periods
             results = {
                 'model_name': model_name,
                 'category': 'Anomaly Detection',
                 'n_anomalies': int(np.sum(anomalies)),
                 'anomaly_rate': float(np.mean(anomalies) * 100),
                 'predictions': predictions.tolist(),
-                'next_price': float(data['Close'].iloc[-1]),
-                'confidence': float(100 - (np.mean(anomalies) * 100)),
+                'next_price': next_price,
+                'confidence': confidence,
                 'rmse': 0.0,
                 'accuracy': float(100 - (np.mean(anomalies) * 100))
             }

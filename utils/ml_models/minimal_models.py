@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-from sklearn.linear_model import LinearRegression, Ridge, Lasso
+from sklearn.linear_model import LinearRegression, Ridge, Lasso, ElasticNet, LogisticRegression  # ADD ElasticNet, LogisticRegression
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.tree import DecisionTreeRegressor
 from sklearn.svm import SVR
@@ -31,6 +31,8 @@ class MinimalModelManager:
                 'Linear Regression': LinearRegression(),
                 'Ridge Regression': Ridge(alpha=1.0),
                 'Lasso Regression': Lasso(alpha=1.0),
+                'Elastic Net Regression': ElasticNet(alpha=1.0, l1_ratio=0.5),  # ADDED
+                'Logistic Regression': LogisticRegression(random_state=42),     # ADDED
                 'Decision Tree': DecisionTreeRegressor(max_depth=10, random_state=42),
                 'Support Vector Regression': SVR(kernel='rbf', C=1.0),
                 'K-Nearest Neighbors': KNeighborsRegressor(n_neighbors=5)
@@ -232,6 +234,14 @@ class MinimalModelManager:
                     'confidence': 0.0,
                     'rmse': float('inf')
                 }
+            
+            # Special handling for Logistic Regression (classification)
+            if model_name == 'Logistic Regression':
+                # Convert to binary classification (price up/down)
+                current_prices = data['Close'].iloc[5:]  # Skip first 5 due to lookback
+                price_changes = current_prices.pct_change().dropna()
+                y_binary = (price_changes > 0).astype(int)  # 1 for up, 0 for down
+                y = y_binary[:len(X)]  # Match X length
             
             X_train, X_test, y_train, y_test = train_test_split(
                 X, y, test_size=0.2, random_state=42, shuffle=False

@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-from sklearn.linear_model import LinearRegression, Ridge, Lasso, ElasticNet, LogisticRegression  # ADD ElasticNet, LogisticRegression
+from sklearn.linear_model import LinearRegression, Ridge, Lasso, ElasticNet, LogisticRegression
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.tree import DecisionTreeRegressor
 from sklearn.svm import SVR
@@ -31,8 +31,8 @@ class MinimalModelManager:
                 'Linear Regression': LinearRegression(),
                 'Ridge Regression': Ridge(alpha=1.0),
                 'Lasso Regression': Lasso(alpha=1.0),
-                'Elastic Net Regression': ElasticNet(alpha=1.0, l1_ratio=0.5),  # ADDED
-                'Logistic Regression': LogisticRegression(random_state=42),     # ADDED
+                'Elastic Net Regression': ElasticNet(alpha=1.0, l1_ratio=0.5),
+                'Logistic Regression': LogisticRegression(random_state=42),
                 'Decision Tree': DecisionTreeRegressor(max_depth=10, random_state=42),
                 'Support Vector Regression': SVR(kernel='rbf', C=1.0),
                 'K-Nearest Neighbors': KNeighborsRegressor(n_neighbors=5)
@@ -259,7 +259,21 @@ class MinimalModelManager:
             test_r2 = r2_score(y_test, test_pred) * 100
             
             latest_features = X[-1].reshape(1, -1)
-            next_price = model.predict(latest_features)[0]
+            if model_name == 'Logistic Regression':
+                # Get probability of price going up
+                prob_up = model.predict_proba(latest_features)[0][1]  # Probability of class 1 (up)
+                current_price = float(data['Close'].iloc[-1])
+                # Convert probability to price prediction
+                if prob_up > 0.5:
+                    # Predict price increase based on confidence
+                    price_increase = (prob_up - 0.5) * 0.04  # Max 2% increase
+                    next_price = current_price * (1 + price_increase)
+                else:
+                    # Predict price decrease based on confidence  
+                    price_decrease = (0.5 - prob_up) * 0.04  # Max 2% decrease
+                    next_price = current_price * (1 - price_decrease)
+            else:
+                next_price = model.predict(latest_features)[0]
             
             results = {
                 'model_name': model_name,
@@ -376,7 +390,7 @@ class MinimalModelManager:
                 'next_price': float(data['Close'].iloc[-1]),
                 'confidence': 50.0,
                 'rmse': 0.0,
-                'accuracy': float(np.sum(model.explained_variance_ratio_)) * 100
+                'accuracy': float(np.sum(model.explained_variance_ratio_))
             }
             
             return results

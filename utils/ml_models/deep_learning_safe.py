@@ -37,13 +37,14 @@ class DeepLearningModels:
         """Return dictionary of available deep learning models"""
         return self.available_models
     
-    def prepare_sequences(self, data, sequence_length=60):
+    def prepare_sequences(self, data, sequence_length=60, model_name='LSTM'):
         """
         Prepare sequences for deep learning models
         
         Args:
-            data (DataFrame): Stock data
+            data (DataFrame): Stock data with required columns
             sequence_length (int): Length of input sequences
+            model_name (str): Name of the model (affects input shape)
             
         Returns:
             tuple: (X, y, scaler)
@@ -53,23 +54,47 @@ class DeepLearningModels:
             return None, None, None
             
         try:
-            # Use Close price as target
-            values = data['Close'].values
+            # Validate required columns
+            required_cols = ['Open', 'High', 'Low', 'Close', 'Volume']
+            if not all(col in data.columns for col in required_cols):
+                st.error(f"Input data must contain columns: {required_cols}")
+                return None, None, None
+                
+            # Drop rows with NaN values
+            data = data.dropna()
+            if data.empty:
+                st.error("No valid data after removing NaN values")
+                return None, None, None
+                
+            if model_name == 'Simple Neural Network':
+                # Use multiple features with fixed lookback
+                lookback = 5
+                scaler = MinMaxScaler(feature_range=(0, 1))
+                scaled = scaler.fit_transform(data[required_cols])
+                self.scalers['Close'] = scaler
+                
+                X, y = [], []
+                for i in range(lookback, len(scaled)):
+                    X.append(scaled[i-lookback:i].flatten())
+                    y.append(scaled[i, data.columns.get_loc('Close')])
+            else:
+                # Use Close price for sequential models
+                values = data['Close'].values
+                scaler = MinMaxScaler(feature_range=(0, 1))
+                scaled = scaler.fit_transform(values.reshape(-1, 1))
+                self.scalers['Close'] = scaler
+                
+                X, y = [], []
+                for i in range(sequence_length, len(scaled)):
+                    X.append(scaled[i-sequence_length:i, 0])
+                    y.append(scaled[i, 0])
             
-            # Scale the data
-            scaler = MinMaxScaler(feature_range=(0, 1))
-            scaled = scaler.fit_transform(values.reshape(-1, 1))
-            
-            # Store scaler for later use
-            self.scalers['Close'] = scaler
-            
-            # Create sequences
-            X, y = [], []
-            for i in range(sequence_length, len(scaled)):
-                X.append(scaled[i-sequence_length:i, 0])
-                y.append(scaled[i, 0])
-            
-            return np.array(X), np.array(y), scaler
+            X, y = np.array(X), np.array(y)
+            if np.any(np.isnan(X)) or np.any(np.isnan(y)):
+                st.error("NaN values detected in sequences")
+                return None, None, None
+                
+            return X, y, scaler
             
         except Exception as e:
             st.error(f"Error preparing sequences: {str(e)}")
@@ -104,14 +129,19 @@ class DeepLearningModels:
             }
         
         try:
-            # Reshape data for LSTM/GRU
+            # Reshape data if needed
             if model_name in ['LSTM', 'GRU', 'CNN-LSTM']:
                 X_train = X_train.reshape((X_train.shape[0], X_train.shape[1], 1))
                 if X_test is not None:
                     X_test = X_test.reshape((X_test.shape[0], X_test.shape[1], 1))
+            elif model_name == 'Simple Neural Network':
+                # Ensure 2D input
+                X_train = X_train.reshape((X_train.shape[0], X_train.shape[1]))
+                if X_test is not None:
+                    X_test = X_test.reshape((X_test.shape[0], X_test.shape[1]))
             
             # Build model
-            model = self._build_model(model_name, X_train.shape)
+            model = self._build_model(model_name, X_train.shape if model_name == 'Simple Neural Network' else (X_train.shape[0], X_train.shape[1], 1))
             if model is None:
                 return {
                     'error': f'Failed to build model {model_name}',
@@ -150,7 +180,7 @@ class DeepLearningModels:
                 'train_r2': float(train_r2),
                 'epochs_trained': epochs,
                 'final_loss': float(history.history['loss'][-1]),
-                'final_val_loss': float(history.history['val_loss'][-1]) if 'val_loss' in history.history else None
+                'final_val_loss': float(history.history['val_loss'][-1]) if 'val_val_loss' in history.history else None
             }
             
             if X_test is not None and y_test is not None:
@@ -234,7 +264,7 @@ class DeepLearningModels:
                 model.add(Dense(1))
                 
             elif model_name == 'Simple Neural Network':
-                model.add(Flatten(input_shape=input_shape[1:]))
+                model.add(Flatten(input_shape=(input_shape[1],)))
                 model.add(Dense(50, activation='relu'))
                 model.add(Dropout(0.2))
                 model.add(Dense(25, activation='relu'))
@@ -270,10 +300,16 @@ class DeepLearningModels:
             model = self.trained_models[model_name]
             
             # Reshape sequence if needed
-            if sequence.ndim == 1:
-                sequence = sequence.reshape(1, sequence.shape[0], 1)
-            elif sequence.ndim == 2:
-                sequence = sequence.reshape(1, sequence.shape[0], sequence.shape[1])
+            if model_name in ['LSTM', 'GRU', 'CNN-LSTM']:
+                if sequence.ndim == 1:
+                    sequence = sequence.reshape(1, sequence.shape[0], 1)
+                elif sequence.ndim == 2:
+                    sequence = sequence.reshape(1, sequence.shape[0], 1)
+            elif model_name == 'Simple Neural Network':
+                if sequence.ndim == 1:
+                    sequence = sequence.reshape(1, sequence.shape[0])
+                elif sequence.ndim == 2:
+                    sequence = sequence.reshape(1, sequence.shape[0])
             
             # Make prediction
             prediction = model.predict(sequence, verbose=0)
@@ -325,7 +361,7 @@ class DeepLearningModels:
             
             # Prepare data
             sequence_length = kwargs.get('sequence_length', 60)
-            X, y, scaler = self.prepare_sequences(data, sequence_length=sequence_length)
+            X, y, scaler = self.prepare_sequences(data, sequence_length=sequence_length, model_name=model_name)
             if X is None or y is None or scaler is None:
                 return {
                     'error': 'Could not prepare data',

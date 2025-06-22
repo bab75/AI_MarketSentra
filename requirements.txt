@@ -14,3 +14,5 @@ xgboost
 lightgbm>=4.0.0
 catboost>=1.2.0
 tensorflow>=2.19.0
+hmmlearn>=0.3.0      # For Hidden Markov Models
+pmdarima>=2.0.4  

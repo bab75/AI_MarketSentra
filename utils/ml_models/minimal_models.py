@@ -20,7 +20,7 @@ from statsmodels.tsa.arima.model import ARIMA
 from statsmodels.tsa.statespace.sarimax import SARIMAX
 from statsmodels.tsa.holtwinters import ExponentialSmoothing
 from hmmlearn.hmm import GaussianHMM
-from .deep_learning_safe import DeepLearningModels  # Updated import
+from .deep_learning_safe import DeepLearningModels
 
 class MinimalModelManager:
     """Minimal ML Model Manager with core scikit-learn models and integration for deep learning"""
@@ -231,7 +231,7 @@ class MinimalModelManager:
                     'confidence': 0.0,
                     'rmse': float('inf')
                 }
-                        
+            
             X_train, X_test, y_train, y_test = train_test_split(
                 X, y, test_size=0.2, random_state=42, shuffle=False
             )
@@ -433,13 +433,15 @@ class MinimalModelManager:
             # Calculate metrics
             residuals = fitted_model.resid
             rmse = np.sqrt(np.mean(residuals**2))
+            current_price = float(ts_data.iloc[-1])
+            confidence = max(0, min(100, 100 - (rmse / current_price * 100)))
             
             return {
                 'model_name': 'SARIMA',
                 'category': 'Time Series Specialized',
                 'next_price': next_price,
-                'confidence': max(0, min(100, 100 - rmse)),
-                'accuracy': max(0, min(100, 100 - rmse)),
+                'confidence': confidence,
+                'accuracy': confidence,
                 'rmse': float(rmse),
                 'aic': float(fitted_model.aic)
             }
@@ -480,13 +482,15 @@ class MinimalModelManager:
             fitted_values = fitted_model.fittedvalues
             residuals = ts_data[len(ts_data)-len(fitted_values):] - fitted_values
             rmse = np.sqrt(np.mean(residuals**2))
+            current_price = float(ts_data.iloc[-1])
+            confidence = max(0, min(100, 100 - (rmse / current_price * 100)))
             
             return {
                 'model_name': 'Exponential Smoothing',
                 'category': 'Time Series Specialized',
                 'next_price': next_price,
-                'confidence': max(0, min(100, 100 - rmse)),
-                'accuracy': max(0, min(100, 100 - rmse)),
+                'confidence': confidence,
+                'accuracy': confidence,
                 'rmse': float(rmse)
             }
             
@@ -519,7 +523,7 @@ class MinimalModelManager:
             current_state = hidden_states[-1]
             
             # Predict next price based on current state
-            last_price = data['Close'].iloc[-1]
+            last_price = float(data['Close'].iloc[-1])
             state_returns = []
             
             for state in range(n_components):
@@ -533,13 +537,21 @@ class MinimalModelManager:
             predicted_return = state_returns[current_state]
             next_price = last_price * (1 + predicted_return)
             
+            # Calculate RMSE
+            actual_returns = features['Close'].values
+            predicted_returns = np.zeros_like(actual_returns)
+            for i, state in enumerate(hidden_states):
+                predicted_returns[i] = state_returns[state]
+            rmse = np.sqrt(np.mean((actual_returns - predicted_returns) ** 2) * last_price ** 2)
+            confidence = max(0, min(100, 100 - (rmse / last_price * 100)))
+            
             return {
                 'model_name': 'Hidden Markov Models',
                 'category': 'Time Series Specialized',
                 'next_price': float(next_price),
-                'confidence': 70.0,
-                'accuracy': 70.0,
-                'rmse': 0.1,
+                'confidence': float(confidence),
+                'accuracy': float(confidence),
+                'rmse': float(rmse),
                 'current_state': int(current_state),
                 'n_states': n_components
             }

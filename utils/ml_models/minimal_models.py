@@ -386,6 +386,16 @@ class MinimalModelManager:
         try:
             # Prepare time series data
             ts_data = data['Close'].dropna()
+            if ts_data.empty:
+                return {
+                    'error': 'No valid Close data available',
+                    'model_name': model_name,
+                    'category': 'Time Series Specialized',
+                    'next_price': 0.0,
+                    'accuracy': 0.0,
+                    'confidence': 0.0,
+                    'rmse': float('inf')
+                }
             
             if model_name == 'sarima_model':
                 return self._train_sarima(ts_data, **kwargs)
@@ -418,23 +428,30 @@ class MinimalModelManager:
     def _train_sarima(self, ts_data, **kwargs):
         """Train SARIMA model"""
         try:
-            # SARIMA parameters (p,d,q)(P,D,Q,s)
+            if ts_data.empty:
+                return {
+                    'error': 'No valid Close data for SARIMA',
+                    'model_name': 'SARIMA',
+                    'category': 'Time Series Specialized',
+                    'next_price': 0.0,
+                    'accuracy': 0.0,
+                    'confidence': 0.0,
+                    'rmse': float('inf')
+                }
+            
             order = kwargs.get('order', (1, 1, 1))
             seasonal_order = kwargs.get('seasonal_order', (1, 1, 1, 12))
             
-            # Fit SARIMA model
             model = SARIMAX(ts_data, order=order, seasonal_order=seasonal_order)
             fitted_model = model.fit(disp=False)
             
-            # Make forecast
             forecast = fitted_model.forecast(steps=1)
-            next_price = float(forecast.iloc[0])
+            next_price = float(forecast.iloc[0]) if not forecast.empty and np.isfinite(forecast.iloc[0]) else 0.0
             
-            # Calculate metrics
             residuals = fitted_model.resid
-            rmse = np.sqrt(np.mean(residuals**2))
+            rmse = np.sqrt(np.mean(residuals**2)) if len(residuals) > 0 and np.isfinite(residuals).all() else float('inf')
             current_price = float(ts_data.iloc[-1])
-            confidence = max(0, min(100, 100 - (rmse / current_price * 100)))
+            confidence = max(0, min(100, 100 - (rmse / current_price * 100))) if current_price > 0 else 0.0
             
             return {
                 'model_name': 'SARIMA',
@@ -442,7 +459,7 @@ class MinimalModelManager:
                 'next_price': next_price,
                 'confidence': confidence,
                 'accuracy': confidence,
-                'rmse': float(rmse),
+                'rmse': float(rmse) if np.isfinite(rmse) else float('inf'),
                 'aic': float(fitted_model.aic)
             }
             
@@ -460,12 +477,21 @@ class MinimalModelManager:
     def _train_exponential_smoothing(self, ts_data, **kwargs):
         """Train Exponential Smoothing model"""
         try:
-            # Exponential Smoothing parameters
+            if ts_data.empty:
+                return {
+                    'error': 'No valid Close data for Exponential Smoothing',
+                    'model_name': 'Exponential Smoothing',
+                    'category': 'Time Series Specialized',
+                    'next_price': 0.0,
+                    'accuracy': 0.0,
+                    'confidence': 0.0,
+                    'rmse': float('inf')
+                }
+            
             trend = kwargs.get('trend', 'add')
             seasonal = kwargs.get('seasonal', 'add')
             seasonal_periods = kwargs.get('seasonal_periods', 12)
             
-            # Fit Exponential Smoothing model
             model = ExponentialSmoothing(
                 ts_data, 
                 trend=trend, 
@@ -474,16 +500,14 @@ class MinimalModelManager:
             )
             fitted_model = model.fit()
             
-            # Make forecast
             forecast = fitted_model.forecast(steps=1)
-            next_price = float(forecast[0])
+            next_price = float(forecast[0]) if not np.isnan(forecast[0]) else 0.0
             
-            # Calculate metrics
             fitted_values = fitted_model.fittedvalues
             residuals = ts_data[len(ts_data)-len(fitted_values):] - fitted_values
-            rmse = np.sqrt(np.mean(residuals**2))
+            rmse = np.sqrt(np.mean(residuals**2)) if len(residuals) > 0 and np.isfinite(residuals).all() else float('inf')
             current_price = float(ts_data.iloc[-1])
-            confidence = max(0, min(100, 100 - (rmse / current_price * 100)))
+            confidence = max(0, min(100, 100 - (rmse / current_price * 100))) if current_price > 0 else 0.0
             
             return {
                 'model_name': 'Exponential Smoothing',
@@ -491,7 +515,7 @@ class MinimalModelManager:
                 'next_price': next_price,
                 'confidence': confidence,
                 'accuracy': confidence,
-                'rmse': float(rmse)
+                'rmse': float(rmse) if np.isfinite(rmse) else float('inf')
             }
             
         except Exception as e:
@@ -510,6 +534,16 @@ class MinimalModelManager:
         try:
             # Prepare features for HMM
             features = data[['Close', 'Volume']].pct_change().dropna()
+            if features.empty:
+                return {
+                    'error': 'No valid features for HMM',
+                    'model_name': 'Hidden Markov Models',
+                    'category': 'Time Series Specialized',
+                    'next_price': 0.0,
+                    'accuracy': 0.0,
+                    'confidence': 0.0,
+                    'rmse': float('inf')
+                }
             
             # HMM parameters
             n_components = kwargs.get('n_components', 3)  # 3 market states
@@ -532,18 +566,16 @@ class MinimalModelManager:
                     state_return = np.mean(features[state_mask]['Close'])
                     state_returns.append(state_return)
                 else:
-                    state_returns.append(0)
+                    state_returns.append(0.0)  # Fallback to 0 if no data
             
-            predicted_return = state_returns[current_state]
-            next_price = last_price * (1 + predicted_return)
+            predicted_return = state_returns[current_state] if state_returns[current_state] is not None else 0.0
+            next_price = last_price * (1 + predicted_return) if last_price > 0 else last_price
             
-            # Calculate RMSE
+            # Calculate RMSE and confidence
             actual_returns = features['Close'].values
-            predicted_returns = np.zeros_like(actual_returns)
-            for i, state in enumerate(hidden_states):
-                predicted_returns[i] = state_returns[state]
-            rmse = np.sqrt(np.mean((actual_returns - predicted_returns) ** 2) * last_price ** 2)
-            confidence = max(0, min(100, 100 - (rmse / last_price * 100)))
+            predicted_returns = np.array([state_returns[state] for state in hidden_states])
+            rmse = np.sqrt(np.mean((actual_returns - predicted_returns) ** 2)) * last_price if last_price > 0 else float('inf')
+            confidence = max(0, min(100, 100 - (rmse / last_price * 100))) if last_price > 0 else 0.0
             
             return {
                 'model_name': 'Hidden Markov Models',
@@ -551,7 +583,7 @@ class MinimalModelManager:
                 'next_price': float(next_price),
                 'confidence': float(confidence),
                 'accuracy': float(confidence),
-                'rmse': float(rmse),
+                'rmse': float(rmse) if np.isfinite(rmse) else float('inf'),
                 'current_state': int(current_state),
                 'n_states': n_components
             }

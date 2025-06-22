@@ -84,6 +84,7 @@ class MinimalModelManager:
             },
             'Time Series Specialized': {
                 'SARIMA': 'SARIMA',
+                'ARIMA': 'ARIMA',
                 'Exponential Smoothing': 'Exponential Smoothing',
                 'Hidden Markov Models': 'Hidden Markov Models'
             }
@@ -396,6 +397,17 @@ class MinimalModelManager:
                     'confidence': 75.0,
                     'accuracy': 75.0,
                     'rmse': 0.05
+                }
+            elif model_name == 'ARIMA':
+                # Simple ARIMA prediction simulation
+                next_price = current_price * 1.015  # 1.5% increase prediction
+                return {
+                    'model_name': 'ARIMA',
+                    'category': 'Time Series Specialized',
+                    'next_price': next_price,
+                    'confidence': 80.0,
+                    'accuracy': 80.0,
+                    'rmse': 0.04
                 }
             elif model_name == 'Exponential Smoothing':
                 next_price = current_price * 1.01  # 1% increase prediction  

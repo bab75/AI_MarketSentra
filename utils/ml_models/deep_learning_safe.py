@@ -250,62 +250,43 @@ class DeepLearningModels:
             return None
     
     def predict_next_price(self, model_name, sequence):
-    """
-    Predict next price using trained model
-    
-    Args:
-        model_name (str): Name of trained model
-        sequence (array): Input sequence
+        """
+        Predict next price using trained model
         
-    Returns:
-        float: Predicted price
-    """
-    if not TENSORFLOW_AVAILABLE:
-        return None
-        
-    try:
-        if model_name not in self.trained_models:
-            return None
-        
-        model = self.trained_models[model_name]
-        
-        # Validate and reshape sequence
-        if sequence is None or not np.any(sequence):
-            st.error(f"Invalid sequence for {model_name}")
+        Args:
+            model_name (str): Name of trained model
+            sequence (array): Input sequence
+            
+        Returns:
+            float: Predicted price
+        """
+        if not TENSORFLOW_AVAILABLE:
             return None
             
-        if model_name in ['LSTM', 'GRU', 'CNN-LSTM']:
+        try:
+            if model_name not in self.trained_models:
+                return None
+            
+            model = self.trained_models[model_name]
+            
+            # Reshape sequence if needed
             if sequence.ndim == 1:
                 sequence = sequence.reshape(1, sequence.shape[0], 1)
             elif sequence.ndim == 2:
-                sequence = sequence.reshape(1, sequence.shape[0], 1)
-        elif model_name == 'Simple Neural Network':
-            if sequence.ndim == 1:
-                expected_features = 25  # 5 features * 5 lookback
-                if sequence.shape[0] != expected_features:
-                    st.error(f"Expected {expected_features} features, got {sequence.shape[0]}")
-                    return None
-                sequence = sequence.reshape(1, expected_features)
-            elif sequence.ndim == 2:
-                sequence = sequence.reshape(1, sequence.shape[1])
-        
-        # Check for NaNs
-        if np.any(np.isnan(sequence)):
-            st.error(f"NaN values detected in sequence for {model_name}")
-            return None
+                sequence = sequence.reshape(1, sequence.shape[0], sequence.shape[1])
             
-        # Make prediction
-        prediction = model.predict(sequence, verbose=0)
-        
-        # Inverse transform if scaler available
-        if 'Close' in self.scalers:
-            prediction = self.scalers['Close'].inverse_transform(prediction)
-        
-        return float(prediction[0][0])
-        
+            # Make prediction
+            prediction = model.predict(sequence, verbose=0)
+            
+            # Inverse transform if scaler available
+            if 'Close' in self.scalers:
+                prediction = self.scalers['Close'].inverse_transform(prediction)
+            
+            return float(prediction[0][0])
+            
         except Exception as e:
-        st.error(f"Error predicting with {model_name}: {str(e)}")
-        return None
+            st.error(f"Error predicting with {model_name}: {str(e)}")
+            return None
     
     def train_and_predict(self, data, model_name, **kwargs):
         """

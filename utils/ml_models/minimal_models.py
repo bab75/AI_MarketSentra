@@ -16,7 +16,7 @@ import streamlit as st
 from xgboost import XGBRegressor
 from lightgbm import LGBMRegressor
 from catboost import CatBoostRegressor
-from .deep_learning_models import DeepLearningManager
+from .deep_learning import DeepLearningModels
 
 class MinimalModelManager:
     """Minimal ML Model Manager with core scikit-learn models and integration for deep learning"""
@@ -83,7 +83,7 @@ class MinimalModelManager:
         self.trained_models = {}
         self.model_performances = {}
         self.scalers = {}
-        self.deep_learning_manager = DeepLearningManager()
+        self.deep_learning_manager = DeepLearningModels()
     
     def get_available_models(self):
         """Get all available models organized by category"""
@@ -91,7 +91,6 @@ class MinimalModelManager:
         for category, models in self.models.items():
             available[category] = list(models.keys())
         
-        # Add deep learning models
         dl_models = self.deep_learning_manager.get_available_models()
         available.update(dl_models)
         
@@ -111,6 +110,18 @@ class MinimalModelManager:
     def train_and_predict(self, data, category, model_name, **kwargs):
         """Train a model and make predictions"""
         try:
+            # Check for NaN values
+            if data[['Open', 'High', 'Low', 'Close', 'Volume']].isna().any().any():
+                return {
+                    'error': 'Input data contains NaN values',
+                    'model_name': model_name,
+                    'category': category,
+                    'next_price': 0.0,
+                    'accuracy': 0.0,
+                    'confidence': 0.0,
+                    'rmse': float('inf')
+                }
+            
             if category == 'Deep Learning Models':
                 return self.deep_learning_manager.train_and_predict(data, model_name, **kwargs)
             
@@ -120,7 +131,6 @@ class MinimalModelManager:
             if model_name not in self.models[category]:
                 return {'error': f'Model {model_name} not found in {category}'}
             
-            # Prepare data based on model category
             if category in ['Classical ML', 'Ensemble Methods']:
                 return self._train_supervised_model(data, category, model_name, **kwargs)
             elif category == 'Clustering':
@@ -134,40 +144,36 @@ class MinimalModelManager:
                 
         except Exception as e:
             st.error(f"Error training {model_name}: {str(e)}")
-            return {'error': str(e)}
+            return {
+                'error': str(e),
+                'model_name': model_name,
+                'category': category,
+                'next_price': 0.0,
+                'accuracy': 0.0,
+                'confidence': 0.0,
+                'rmse': float('inf')
+            }
     
     def _prepare_features(self, data, lookback=5):
         """Prepare features for ML models"""
         try:
-            # Use basic OHLCV features
             features_df = data[['Open', 'High', 'Low', 'Close', 'Volume']].dropna()
-            
-            # Add simple technical indicators
             features_df = features_df.copy()
             features_df['Price_Change'] = features_df['Close'].pct_change()
             features_df['Volume_Change'] = features_df['Volume'].pct_change()
             features_df['High_Low_Ratio'] = features_df['High'] / features_df['Low']
             features_df['Close_Open_Ratio'] = features_df['Close'] / features_df['Open']
-            
-            # Add moving averages
             features_df['MA_5'] = features_df['Close'].rolling(5).mean()
             features_df['MA_10'] = features_df['Close'].rolling(10).mean()
-            
-            # Drop NaN values
             features_df = features_df.dropna()
             
             if len(features_df) < lookback + 1:
                 return None, None
             
-            # Create feature matrix with lookback
-            X = []
-            y = []
-            
+            X, y = [], []
             for i in range(lookback, len(features_df)):
-                # Use last 'lookback' rows as features
                 feature_row = features_df.iloc[i-lookback:i].values.flatten()
                 target = features_df['Close'].iloc[i]
-                
                 X.append(feature_row)
                 y.append(target)
             
@@ -180,33 +186,25 @@ class MinimalModelManager:
     def _train_supervised_model(self, data, category, model_name, **kwargs):
         """Train supervised learning models"""
         try:
-            # Prepare features
             X, y = self._prepare_features(data)
             if X is None or y is None:
                 return {'error': 'Could not prepare features'}
             
-            # Split data
             X_train, X_test, y_train, y_test = train_test_split(
                 X, y, test_size=0.2, random_state=42, shuffle=False
             )
             
-            # Get model
             model = self.models[category][model_name]
-            
-            # Train model
             model.fit(X_train, y_train)
             
-            # Make predictions
             train_pred = model.predict(X_train)
             test_pred = model.predict(X_test)
             
-            # Calculate metrics
             train_rmse = np.sqrt(mean_squared_error(y_train, train_pred))
             test_rmse = np.sqrt(mean_squared_error(y_test, test_pred))
             train_r2 = r2_score(y_train, train_pred) * 100
             test_r2 = r2_score(y_test, test_pred) * 100
             
-            # Predict next price
             latest_features = X[-1].reshape(1, -1)
             next_price = model.predict(latest_features)[0]
             
@@ -219,33 +217,33 @@ class MinimalModelManager:
                 'test_r2': test_r2,
                 'rmse': test_rmse,
                 'accuracy': test_r2,
-                'next_price': next_price,
-                'confidence': max(0, min(100, test_r2))
+                'next_price': float(next_price),
+                'confidence': float(max(0, min(100, test_r2)))
             }
             
-            # Store model
             self.trained_models[f"{category}_{model_name}"] = model
             self.model_performances[f"{category}_{model_name}"] = results
             
             return results
             
         except Exception as e:
-            return {'error': f'Training error: {str(e)}'}
+            return {
+                'error': f'Training error: {str(e)}',
+                'model_name': model_name,
+                'category': category,
+                'next_price': 0.0,
+                'accuracy': 0.0,
+                'confidence': 0.0,
+                'rmse': float('inf')
+            }
     
     def _train_clustering_model(self, data, model_name, **kwargs):
         """Train clustering models"""
         try:
-            # Prepare features
             features = data[['Open', 'High', 'Low', 'Close', 'Volume']].dropna()
-            
-            # Scale features
             scaler = StandardScaler()
             scaled_features = scaler.fit_transform(features)
-            
-            # Get model
             model = self.models['Clustering'][model_name]
-            
-            # Fit model
             labels = model.fit_predict(scaled_features)
             
             results = {
@@ -253,31 +251,32 @@ class MinimalModelManager:
                 'category': 'Clustering',
                 'n_clusters': len(set(labels)),
                 'labels': labels.tolist(),
-                'next_price': data['Close'].iloc[-1],
-                'confidence': 50,
-                'rmse': 0,
+                'next_price': float(data['Close'].iloc[-1]),
+                'confidence': 50.0,
+                'rmse': 0.0,
                 'accuracy': 50.0
             }
             
             return results
             
         except Exception as e:
-            return {'error': f'Clustering error: {str(e)}'}
+            return {
+                'error': f'Clustering error: {str(e)}',
+                'model_name': model_name,
+                'category': 'Clustering',
+                'next_price': 0.0,
+                'accuracy': 0.0,
+                'confidence': 0.0,
+                'rmse': float('inf')
+            }
     
     def _train_anomaly_model(self, data, model_name, **kwargs):
         """Train anomaly detection models"""
         try:
-            # Prepare features
             features = data[['Open', 'High', 'Low', 'Close', 'Volume']].dropna()
-            
-            # Scale features
             scaler = StandardScaler()
             scaled_features = scaler.fit_transform(features)
-            
-            # Get model
             model = self.models['Anomaly Detection'][model_name]
-            
-            # Fit model and predict
             predictions = model.fit_predict(scaled_features)
             anomalies = predictions == -1
             
@@ -287,31 +286,32 @@ class MinimalModelManager:
                 'n_anomalies': int(np.sum(anomalies)),
                 'anomaly_rate': float(np.mean(anomalies) * 100),
                 'predictions': predictions.tolist(),
-                'next_price': data['Close'].iloc[-1],
-                'confidence': 100 - (np.mean(anomalies) * 100),
-                'rmse': 0,
-                'accuracy': 100 - (np.mean(anomalies) * 100)
+                'next_price': float(data['Close'].iloc[-1]),
+                'confidence': float(100 - (np.mean(anomalies) * 100)),
+                'rmse': 0.0,
+                'accuracy': float(100 - (np.mean(anomalies) * 100))
             }
             
             return results
             
         except Exception as e:
-            return {'error': f'Anomaly detection error: {str(e)}'}
+            return {
+                'error': f'Anomaly detection error: {str(e)}',
+                'model_name': model_name,
+                'category': 'Anomaly Detection',
+                'next_price': 0.0,
+                'accuracy': 0.0,
+                'confidence': 0.0,
+                'rmse': float('inf')
+            }
     
     def _train_dimensionality_model(self, data, model_name, **kwargs):
         """Train dimensionality reduction models"""
         try:
-            # Prepare features
             features = data[['Open', 'High', 'Low', 'Close', 'Volume']].dropna()
-            
-            # Scale features
             scaler = StandardScaler()
             scaled_features = scaler.fit_transform(features)
-            
-            # Get model
             model = self.models['Dimensionality Reduction'][model_name]
-            
-            # Fit and transform
             transformed = model.fit_transform(scaled_features)
             
             results = {
@@ -320,16 +320,24 @@ class MinimalModelManager:
                 'n_components': transformed.shape[1],
                 'explained_variance': model.explained_variance_ratio_.tolist(),
                 'total_variance': float(np.sum(model.explained_variance_ratio_)),
-                'next_price': data['Close'].iloc[-1],
-                'confidence': 50,
-                'rmse': 0,
+                'next_price': float(data['Close'].iloc[-1]),
+                'confidence': 50.0,
+                'rmse': 0.0,
                 'accuracy': float(np.sum(model.explained_variance_ratio_)) * 100
             }
             
             return results
             
         except Exception as e:
-            return {'error': f'Dimensionality reduction error: {str(e)}'}
+            return {
+                'error': f'Dimensionality reduction error: {str(e)}',
+                'model_name': model_name,
+                'category': 'Dimensionality Reduction',
+                'next_price': 0.0,
+                'accuracy': 0.0,
+                'confidence': 0.0,
+                'rmse': float('inf')
+            }
     
     def get_global_performances(self):
         """Get all model performances"""

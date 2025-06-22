@@ -20,8 +20,7 @@ from statsmodels.tsa.arima.model import ARIMA
 from statsmodels.tsa.statespace.sarimax import SARIMAX
 from statsmodels.tsa.holtwinters import ExponentialSmoothing
 from hmmlearn.hmm import GaussianHMM
-from .deep_learning_safe import DeepLearningModels as SafeDeepLearningModels
-from .deep_learning import DeepLearningModels as FullDeepLearningModels
+from .deep_learning_safe import DeepLearningModels
 
 class MinimalModelManager:
     """Minimal ML Model Manager with core scikit-learn models and integration for deep learning"""
@@ -81,8 +80,7 @@ class MinimalModelManager:
             },
             'Anomaly Detection': {
                 'Isolation Forest': IsolationForest(contamination=0.1, random_state=42),
-                'One-Class SVM': OneClassSVM(nu=0.1, kernel='rbf', gamma='scale'),
-                'Autoencoder': 'Autoencoder'
+                'One-Class SVM': OneClassSVM(nu=0.1, kernel='rbf', gamma='scale')
             },
             'Dimensionality Reduction': {
                 'PCA': PCA(n_components=2)
@@ -98,8 +96,7 @@ class MinimalModelManager:
         self.trained_models = {}
         self.model_performances = {}
         self.scalers = {}
-        self.deep_learning_manager = SafeDeepLearningModels()
-        self.full_deep_learning_manager = FullDeepLearningModels()
+        self.deep_learning_manager = DeepLearningModels()
     
     def get_available_models(self):
         """Get all available models organized by category"""
@@ -331,7 +328,6 @@ class MinimalModelManager:
             return results
             
         except Exception as e:
-            st.error(f"Clustering error: {str(e)}")
             return {
                 'error': f'Clustering error: {str(e)}',
                 'model_name': model_name,
@@ -345,23 +341,7 @@ class MinimalModelManager:
     def _train_anomaly_model(self, data, model_name, **kwargs):
         """Train anomaly detection models"""
         try:
-            if model_name == 'Autoencoder':
-                # Use full manager for Autoencoder
-                try:
-                    return self.full_deep_learning_manager.train_and_predict(data, model_name, **kwargs)
-                except Exception as e:
-                    st.error(f"Autoencoder training failed in FullDeepLearningModels: {str(e)}")
-                    return {
-                        'error': f'Autoencoder training failed: {str(e)}',
-                        'model_name': model_name,
-                        'category': 'Anomaly Detection',
-                        'next_price': 0.0,
-                        'accuracy': 0.0,
-                        'confidence': 0.0,
-                        'rmse': float('inf')
-                    }
-            
-            features = data[['Open', 'High', 'Low', 'Close', 'Volume]].dropna()
+            features = data[['Open', 'High', 'Low', 'Close', 'Volume']].dropna()
             scaler = StandardScaler()
             scaled_features = scaler.fit_transform(features)
             model = self.models['Anomaly Detection'][model_name]
@@ -400,7 +380,6 @@ class MinimalModelManager:
             return results
             
         except Exception as e:
-            st.error(f"Anomaly detection error for {model_name}: {str(e)}")
             return {
                 'error': f'Anomaly detection error: {str(e)}',
                 'model_name': model_name,
@@ -435,7 +414,6 @@ class MinimalModelManager:
             return results
             
         except Exception as e:
-            st.error(f"Dimensionality reduction error: {str(e)}")
             return {
                 'error': f'Dimensionality reduction error: {str(e)}',
                 'model_name': model_name,

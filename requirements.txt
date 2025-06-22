@@ -1,4 +1,5 @@
 
+# Requires Python 3.12
 streamlit>=1.46.0
 pandas>=2.3.0
 numpy>=2.3.0
@@ -14,4 +15,3 @@ joblib>=1.4.2
 xgboost>=2.1.1
 lightgbm>=4.0.0
 catboost>=1.2.0
-tensorflow==2.18.0

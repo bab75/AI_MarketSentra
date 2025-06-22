@@ -16,7 +16,7 @@ import streamlit as st
 from xgboost import XGBRegressor
 from lightgbm import LGBMRegressor
 from catboost import CatBoostRegressor
-from .deep_learning import DeepLearningModels
+from .deep_learning_safe import DeepLearningModels  # Updated import
 
 class MinimalModelManager:
     """Minimal ML Model Manager with core scikit-learn models and integration for deep learning"""
@@ -110,7 +110,6 @@ class MinimalModelManager:
     def train_and_predict(self, data, category, model_name, **kwargs):
         """Train a model and make predictions"""
         try:
-            # Check for NaN values
             if data[['Open', 'High', 'Low', 'Close', 'Volume']].isna().any().any():
                 return {
                     'error': 'Input data contains NaN values',
@@ -126,10 +125,26 @@ class MinimalModelManager:
                 return self.deep_learning_manager.train_and_predict(data, model_name, **kwargs)
             
             if category not in self.models:
-                return {'error': f'Category {category} not found'}
+                return {
+                    'error': f'Category {category} not found',
+                    'model_name': model_name,
+                    'category': category,
+                    'next_price': 0.0,
+                    'accuracy': 0.0,
+                    'confidence': 0.0,
+                    'rmse': float('inf')
+                }
             
             if model_name not in self.models[category]:
-                return {'error': f'Model {model_name} not found in {category}'}
+                return {
+                    'error': f'Model {model_name} not found in {category}',
+                    'model_name': model_name,
+                    'category': category,
+                    'next_price': 0.0,
+                    'accuracy': 0.0,
+                    'confidence': 0.0,
+                    'rmse': float('inf')
+                }
             
             if category in ['Classical ML', 'Ensemble Methods']:
                 return self._train_supervised_model(data, category, model_name, **kwargs)
@@ -140,7 +155,15 @@ class MinimalModelManager:
             elif category == 'Dimensionality Reduction':
                 return self._train_dimensionality_model(data, model_name, **kwargs)
             else:
-                return {'error': f'Category {category} not implemented'}
+                return {
+                    'error': f'Category {category} not implemented',
+                    'model_name': model_name,
+                    'category': category,
+                    'next_price': 0.0,
+                    'accuracy': 0.0,
+                    'confidence': 0.0,
+                    'rmse': float('inf')
+                }
                 
         except Exception as e:
             st.error(f"Error training {model_name}: {str(e)}")
@@ -188,7 +211,15 @@ class MinimalModelManager:
         try:
             X, y = self._prepare_features(data)
             if X is None or y is None:
-                return {'error': 'Could not prepare features'}
+                return {
+                    'error': 'Could not prepare features',
+                    'model_name': model_name,
+                    'category': category,
+                    'next_price': 0.0,
+                    'accuracy': 0.0,
+                    'confidence': 0.0,
+                    'rmse': float('inf')
+                }
             
             X_train, X_test, y_train, y_test = train_test_split(
                 X, y, test_size=0.2, random_state=42, shuffle=False
@@ -342,3 +373,4 @@ class MinimalModelManager:
     def get_global_performances(self):
         """Get all model performances"""
         return self.model_performances
+            

@@ -20,7 +20,7 @@ from statsmodels.tsa.arima.model import ARIMA
 from statsmodels.tsa.statespace.sarimax import SARIMAX
 from statsmodels.tsa.holtwinters import ExponentialSmoothing
 from hmmlearn.hmm import GaussianHMM
-from .deep_learning_safe import DeepLearningModels as SafeDeepLearningModels
+from .deep_learning_safe import DeepLearningModels
 
 class MinimalModelManager:
     """Minimal ML Model Manager with core scikit-learn models and integration for deep learning"""
@@ -97,7 +97,7 @@ class MinimalModelManager:
         self.trained_models = {}
         self.model_performances = {}
         self.scalers = {}
-        self.deep_learning_manager = SafeDeepLearningModels()
+        self.deep_learning_manager = DeepLearningModels()
     
     def get_available_models(self):
         """Get all available models organized by category"""
@@ -329,7 +329,6 @@ class MinimalModelManager:
             return results
             
         except Exception as e:
-            st.error(f"Clustering error: {str(e)}")
             return {
                 'error': f'Clustering error: {str(e)}',
                 'model_name': model_name,
@@ -348,7 +347,7 @@ class MinimalModelManager:
                 try:
                     return self.deep_learning_manager.train_and_predict(data, model_name, **kwargs)
                 except Exception as e:
-                    st.error(f"Autoencoder training failed in SafeDeepLearningModels: {str(e)}")
+                    st.error(f"Autoencoder training failed in DeepLearningModels: {str(e)}")
                     return {
                         'error': f'Autoencoder training failed: {str(e)}',
                         'model_name': model_name,
@@ -433,7 +432,6 @@ class MinimalModelManager:
             return results
             
         except Exception as e:
-            st.error(f"Dimensionality reduction error: {str(e)}")
             return {
                 'error': f'Dimensionality reduction error: {str(e)}',
                 'model_name': model_name,
@@ -472,7 +470,7 @@ class MinimalModelManager:
                     'rmse': 0.04
                 }
             elif model_name == 'Exponential Smoothing':
-                next_price = current_price * 1.01  # 1% increase prediction  
+                next_price = current_price * 1.01  # 1% increase
                 return {
                     'model_name': 'Exponential Smoothing',
                     'category': 'Time Series Specialized',

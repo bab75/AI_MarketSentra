@@ -83,9 +83,9 @@ class MinimalModelManager:
                 'PCA': PCA(n_components=2)
             },
             'Time Series Specialized': {
-                'SARIMA': 'sarima_model',
-                'Exponential Smoothing': 'exp_smoothing_model',
-                'Hidden Markov Models': 'hmm_model'
+                'SARIMA': 'SARIMA',
+                'Exponential Smoothing': 'Exponential Smoothing',
+                'Hidden Markov Models': 'Hidden Markov Models'
             }
         }
         
@@ -387,7 +387,7 @@ class MinimalModelManager:
             ts_data = data['Close'].dropna()
             current_price = float(data['Close'].iloc[-1])
             
-            if model_name == 'sarima_model':
+            if model_name == 'SARIMA':
                 next_price = current_price * 1.02  # 2% increase prediction
                 return {
                     'model_name': 'SARIMA',
@@ -397,7 +397,7 @@ class MinimalModelManager:
                     'accuracy': 75.0,
                     'rmse': 0.05
                 }
-            elif model_name == 'exp_smoothing_model':
+            elif model_name == 'Exponential Smoothing':
                 next_price = current_price * 1.01  # 1% increase prediction  
                 return {
                     'model_name': 'Exponential Smoothing',
@@ -407,7 +407,7 @@ class MinimalModelManager:
                     'accuracy': 70.0,
                     'rmse': 0.03
                 }
-            elif model_name == 'hmm_model':
+            elif model_name == 'Hidden Markov Models':
                 next_price = current_price * 1.005  # 0.5% increase prediction
                 return {
                     'model_name': 'Hidden Markov Models',

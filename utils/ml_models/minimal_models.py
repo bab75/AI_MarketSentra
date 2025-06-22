@@ -80,7 +80,8 @@ class MinimalModelManager:
             },
             'Anomaly Detection': {
                 'Isolation Forest': IsolationForest(contamination=0.1, random_state=42),
-                'One-Class SVM': OneClassSVM(nu=0.1, kernel='rbf', gamma='scale')
+                'One-Class SVM': OneClassSVM(nu=0.1, kernel='rbf', gamma='scale'),
+                'Autoencoder': 'Autoencoder'  # ADDED
             },
             'Dimensionality Reduction': {
                 'PCA': PCA(n_components=2)
@@ -153,7 +154,7 @@ class MinimalModelManager:
                     'error': f'Model {model_name} not found in {category}',
                     'model_name': model_name,
                     'category': category,
-                    'next_price': 0.0,
+                    'next_price': float,
                     'accuracy': 0.0,
                     'confidence': 0.0,
                     'rmse': float('inf')
@@ -341,6 +342,10 @@ class MinimalModelManager:
     def _train_anomaly_model(self, data, model_name, **kwargs):
         """Train anomaly detection models"""
         try:
+            if model_name == 'Autoencoder':
+                # Route to deep learning manager
+                return self.deep_learning_manager.train_and_predict(data, model_name, **kwargs)
+            
             features = data[['Open', 'High', 'Low', 'Close', 'Volume']].dropna()
             scaler = StandardScaler()
             scaled_features = scaler.fit_transform(features)

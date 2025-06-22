@@ -21,11 +21,13 @@ from statsmodels.tsa.statespace.sarimax import SARIMAX
 from statsmodels.tsa.holtwinters import ExponentialSmoothing
 from hmmlearn.hmm import GaussianHMM
 from .deep_learning_safe import DeepLearningModels
+from .autoencoder import AutoencoderModel
 
 class MinimalModelManager:
     """Minimal ML Model Manager with core scikit-learn models and integration for deep learning"""
     
     def __init__(self):
+        self.autoencoder_model = AutoencoderModel()
         self.models = {
             'Classical ML': {
                 'Linear Regression': LinearRegression(),
@@ -343,20 +345,7 @@ class MinimalModelManager:
         """Train anomaly detection models"""
         try:
             if model_name == 'Autoencoder':
-                # Route to deep learning manager
-                try:
-                    return self.deep_learning_manager.train_and_predict(data, model_name, **kwargs)
-                except Exception as e:
-                    st.error(f"Autoencoder training failed in DeepLearningModels: {str(e)}")
-                    return {
-                        'error': f'Autoencoder training failed: {str(e)}',
-                        'model_name': model_name,
-                        'category': 'Anomaly Detection',
-                        'next_price': 0.0,
-                        'accuracy': 0.0,
-                        'confidence': 0.0,
-                        'rmse': float('inf')
-                    }
+                return self.autoencoder_model.train_and_predict(data, **kwargs)
             
             features = data[['Open', 'High', 'Low', 'Close', 'Volume']].dropna()
             scaler = StandardScaler()
@@ -397,7 +386,6 @@ class MinimalModelManager:
             return results
             
         except Exception as e:
-            st.error(f"Anomaly detection error for {model_name}: {str(e)}")
             return {
                 'error': f'Anomaly detection error: {str(e)}',
                 'model_name': model_name,
@@ -470,7 +458,7 @@ class MinimalModelManager:
                     'rmse': 0.04
                 }
             elif model_name == 'Exponential Smoothing':
-                next_price = current_price * 1.01  # 1% increase
+                next_price = current_price * 1.01  # 1% increase prediction  
                 return {
                     'model_name': 'Exponential Smoothing',
                     'category': 'Time Series Specialized',

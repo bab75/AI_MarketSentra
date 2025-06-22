@@ -3,7 +3,7 @@ import pandas as pd
 from sklearn.linear_model import LinearRegression, Ridge, Lasso, ElasticNet, LogisticRegression
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.tree import DecisionTreeRegressor
-from sklearn.svm import SVR
+from sklearn.svm import SVR, OneClassSVM  # ADD OneClassSVM
 from sklearn.neighbors import KNeighborsRegressor
 from sklearn.cluster import KMeans
 from sklearn.ensemble import IsolationForest
@@ -79,7 +79,8 @@ class MinimalModelManager:
                 'K-Means': KMeans(n_clusters=3, random_state=42)
             },
             'Anomaly Detection': {
-                'Isolation Forest': IsolationForest(contamination=0.1, random_state=42)
+                'Isolation Forest': IsolationForest(contamination=0.1, random_state=42),
+                'One-Class SVM': OneClassSVM(nu=0.1, kernel='rbf', gamma='scale')  # ADDED
             },
             'Dimensionality Reduction': {
                 'PCA': PCA(n_components=2)
@@ -344,8 +345,16 @@ class MinimalModelManager:
             scaler = StandardScaler()
             scaled_features = scaler.fit_transform(features)
             model = self.models['Anomaly Detection'][model_name]
-            predictions = model.fit_predict(scaled_features)
-            anomalies = predictions == -1
+            
+            # Different prediction methods for different models
+            if model_name == 'One-Class SVM':
+                predictions = model.fit_predict(scaled_features)
+                # One-Class SVM: +1 for normal, -1 for outlier
+                anomalies = predictions == -1
+            else:
+                # Isolation Forest: -1 for outlier, +1 for normal  
+                predictions = model.fit_predict(scaled_features)
+                anomalies = predictions == -1
             
             results = {
                 'model_name': model_name,
@@ -390,7 +399,7 @@ class MinimalModelManager:
                 'next_price': float(data['Close'].iloc[-1]),
                 'confidence': 50.0,
                 'rmse': 0.0,
-                'accuracy': float(np.sum(model.explained_variance_ratio_))
+                'accuracy': float(np.sum(model.explained_variance_ratio_)) * 100
             }
             
             return results

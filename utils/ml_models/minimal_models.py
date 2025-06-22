@@ -373,4 +373,3 @@ class MinimalModelManager:
     def get_global_performances(self):
         """Get all model performances"""
         return self.model_performances
-            

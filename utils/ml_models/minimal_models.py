@@ -118,8 +118,11 @@ class MinimalModelManager:
     
     def train_and_predict(self, data, category, model_name, **kwargs):
         """Train a model and make predictions"""
+        print(f"Training {model_name} with data shape: {data.shape}")
+        print(f"Data sample: {data.head()}")
         try:
             if data[['Open', 'High', 'Low', 'Close', 'Volume']].isna().any().any():
+                print("Warning: Input data contains NaN values")
                 return {
                     'error': 'Input data contains NaN values',
                     'model_name': model_name,
@@ -178,6 +181,7 @@ class MinimalModelManager:
                 
         except Exception as e:
             st.error(f"Error training {model_name}: {str(e)}")
+            print(f"Error training {model_name}: {str(e)}")
             return {
                 'error': str(e),
                 'model_name': model_name,
@@ -202,6 +206,7 @@ class MinimalModelManager:
             features_df = features_df.dropna()
             
             if len(features_df) < lookback + 1:
+                print(f"Warning: Insufficient data for lookback={lookback}, len={len(features_df)}")
                 return None, None
             
             X, y = [], []
@@ -215,6 +220,7 @@ class MinimalModelManager:
             
         except Exception as e:
             st.error(f"Error preparing features: {str(e)}")
+            print(f"Error preparing features: {str(e)}")
             return None, None
     
     def _train_supervised_model(self, data, category, model_name, **kwargs):
@@ -383,10 +389,12 @@ class MinimalModelManager:
     
     def _train_time_series_model(self, data, model_name, **kwargs):
         """Train specialized time series models"""
+        print(f"Training {model_name} with Close data: {data['Close'].head()}")
         try:
             # Prepare time series data
             ts_data = data['Close'].dropna()
             if ts_data.empty:
+                print("Error: No valid Close data available")
                 return {
                     'error': 'No valid Close data available',
                     'model_name': model_name,
@@ -415,6 +423,7 @@ class MinimalModelManager:
                 }
                 
         except Exception as e:
+            print(f"Time series error: {str(e)}")
             return {
                 'error': f'Time series error: {str(e)}',
                 'model_name': model_name,
@@ -427,8 +436,10 @@ class MinimalModelManager:
     
     def _train_sarima(self, ts_data, **kwargs):
         """Train SARIMA model"""
+        print(f"SARIMA ts_data: {ts_data.head()}")
         try:
             if ts_data.empty:
+                print("Error: No valid Close data for SARIMA")
                 return {
                     'error': 'No valid Close data for SARIMA',
                     'model_name': 'SARIMA',
@@ -446,11 +457,13 @@ class MinimalModelManager:
             fitted_model = model.fit(disp=False)
             
             forecast = fitted_model.forecast(steps=1)
+            print(f"SARIMA forecast: {forecast}")
             next_price = float(forecast.iloc[0]) if not forecast.empty and np.isfinite(forecast.iloc[0]) else 0.0
             
             residuals = fitted_model.resid
             rmse = np.sqrt(np.mean(residuals**2)) if len(residuals) > 0 and np.isfinite(residuals).all() else float('inf')
             current_price = float(ts_data.iloc[-1])
+            print(f"SARIMA rmse: {rmse}, current_price: {current_price}")
             confidence = max(0, min(100, 100 - (rmse / current_price * 100))) if current_price > 0 else 0.0
             
             return {
@@ -464,6 +477,7 @@ class MinimalModelManager:
             }
             
         except Exception as e:
+            print(f"SARIMA error: {str(e)}")
             return {
                 'error': f'SARIMA error: {str(e)}',
                 'model_name': 'SARIMA',
@@ -476,8 +490,10 @@ class MinimalModelManager:
     
     def _train_exponential_smoothing(self, ts_data, **kwargs):
         """Train Exponential Smoothing model"""
+        print(f"Exp Smoothing ts_data: {ts_data.head()}")
         try:
             if ts_data.empty:
+                print("Error: No valid Close data for Exponential Smoothing")
                 return {
                     'error': 'No valid Close data for Exponential Smoothing',
                     'model_name': 'Exponential Smoothing',
@@ -501,12 +517,14 @@ class MinimalModelManager:
             fitted_model = model.fit()
             
             forecast = fitted_model.forecast(steps=1)
+            print(f"Exp Smoothing forecast: {forecast}")
             next_price = float(forecast[0]) if not np.isnan(forecast[0]) else 0.0
             
             fitted_values = fitted_model.fittedvalues
             residuals = ts_data[len(ts_data)-len(fitted_values):] - fitted_values
             rmse = np.sqrt(np.mean(residuals**2)) if len(residuals) > 0 and np.isfinite(residuals).all() else float('inf')
             current_price = float(ts_data.iloc[-1])
+            print(f"Exp Smoothing rmse: {rmse}, current_price: {current_price}")
             confidence = max(0, min(100, 100 - (rmse / current_price * 100))) if current_price > 0 else 0.0
             
             return {
@@ -519,6 +537,7 @@ class MinimalModelManager:
             }
             
         except Exception as e:
+            print(f"Exp Smoothing error: {str(e)}")
             return {
                 'error': f'Exponential Smoothing error: {str(e)}',
                 'model_name': 'Exponential Smoothing',
@@ -531,10 +550,13 @@ class MinimalModelManager:
     
     def _train_hmm(self, data, **kwargs):
         """Train Hidden Markov Model"""
+        print(f"HMM data: {data[['Close', 'Volume']].head()}")
         try:
             # Prepare features for HMM
             features = data[['Close', 'Volume']].pct_change().dropna()
+            print(f"HMM features after pct_change: {features.head()}")
             if features.empty:
+                print("Error: No valid features for HMM")
                 return {
                     'error': 'No valid features for HMM',
                     'model_name': 'Hidden Markov Models',
@@ -555,9 +577,11 @@ class MinimalModelManager:
             # Predict hidden states
             hidden_states = model.predict(features.values)
             current_state = hidden_states[-1]
+            print(f"HMM hidden_states: {hidden_states}, current_state: {current_state}")
             
             # Predict next price based on current state
             last_price = float(data['Close'].iloc[-1])
+            print(f"HMM last_price: {last_price}")
             state_returns = []
             
             for state in range(n_components):
@@ -567,15 +591,19 @@ class MinimalModelManager:
                     state_returns.append(state_return)
                 else:
                     state_returns.append(0.0)  # Fallback to 0 if no data
+            print(f"HMM state_returns: {state_returns}")
             
             predicted_return = state_returns[current_state] if state_returns[current_state] is not None else 0.0
             next_price = last_price * (1 + predicted_return) if last_price > 0 else last_price
+            print(f"HMM predicted_return: {predicted_return}, next_price: {next_price}")
             
             # Calculate RMSE and confidence
             actual_returns = features['Close'].values
             predicted_returns = np.array([state_returns[state] for state in hidden_states])
             rmse = np.sqrt(np.mean((actual_returns - predicted_returns) ** 2)) * last_price if last_price > 0 else float('inf')
+            print(f"HMM rmse: {rmse}")
             confidence = max(0, min(100, 100 - (rmse / last_price * 100))) if last_price > 0 else 0.0
+            print(f"HMM confidence: {confidence}")
             
             return {
                 'model_name': 'Hidden Markov Models',
@@ -589,6 +617,7 @@ class MinimalModelManager:
             }
             
         except Exception as e:
+            print(f"HMM error: {str(e)}")
             return {
                 'error': f'HMM error: {str(e)}',
                 'model_name': 'Hidden Markov Models',

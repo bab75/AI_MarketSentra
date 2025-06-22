@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.metrics import mean_squared_error, r2_score
+from sklearn.model_selection import train_test_split
 import streamlit as st
 
 # Safe TensorFlow import
@@ -26,12 +27,14 @@ class DeepLearningModels:
         
         # Only add models if TensorFlow is available
         if TENSORFLOW_AVAILABLE:
-            self.available_models = ['LSTM', 'GRU', 'CNN-LSTM', 'Simple Neural Network']
+            self.available_models = {
+                'Deep Learning Models': ['LSTM', 'GRU', 'CNN-LSTM', 'Simple Neural Network']
+            }
         else:
             st.warning("TensorFlow not available. Deep learning models are disabled.")
     
     def get_available_models(self):
-        """Return list of available deep learning models"""
+        """Return dictionary of available deep learning models"""
         return self.available_models
     
     def prepare_sequences(self, data, sequence_length=60):
@@ -43,11 +46,11 @@ class DeepLearningModels:
             sequence_length (int): Length of input sequences
             
         Returns:
-            tuple: (X, y) arrays for training
+            tuple: (X, y, scaler)
         """
         if not TENSORFLOW_AVAILABLE:
             st.error("TensorFlow not available for sequence preparation")
-            return None, None
+            return None, None, None
             
         try:
             # Use Close price as target
@@ -66,11 +69,11 @@ class DeepLearningModels:
                 X.append(scaled[i-sequence_length:i, 0])
                 y.append(scaled[i, 0])
             
-            return np.array(X), np.array(y)
+            return np.array(X), np.array(y), scaler
             
         except Exception as e:
             st.error(f"Error preparing sequences: {str(e)}")
-            return None, None
+            return None, None, None
     
     def train_model(self, model_name, X_train, y_train, X_test=None, y_test=None, 
                    epochs=50, batch_size=32, **kwargs):
@@ -93,7 +96,10 @@ class DeepLearningModels:
             return {
                 'error': 'TensorFlow not available',
                 'model_name': model_name,
-                'accuracy': 0,
+                'category': 'Deep Learning Models',
+                'next_price': 0.0,
+                'accuracy': 0.0,
+                'confidence': 0.0,
                 'rmse': float('inf')
             }
         
@@ -104,14 +110,21 @@ class DeepLearningModels:
                 if X_test is not None:
                     X_test = X_test.reshape((X_test.shape[0], X_test.shape[1], 1))
             
-            # Build model based on type
+            # Build model
             model = self._build_model(model_name, X_train.shape)
-            
             if model is None:
-                return None
+                return {
+                    'error': f'Failed to build model {model_name}',
+                    'model_name': model_name,
+                    'category': 'Deep Learning Models',
+                    'next_price': 0.0,
+                    'accuracy': 0.0,
+                    'confidence': 0.0,
+                    'rmse': float('inf')
+                }
             
             # Compile model
-            model.compile(optimizer='adam', loss='mse', metrics=['mae'])
+            model.compile(optimizer=Adam(learning_rate=0.001), loss='mse', metrics=['mae'])
             
             # Train model
             history = model.fit(
@@ -132,27 +145,42 @@ class DeepLearningModels:
             
             results = {
                 'model_name': model_name,
-                'train_rmse': train_rmse,
-                'train_r2': train_r2,
+                'category': 'Deep Learning Models',
+                'train_rmse': float(train_rmse),
+                'train_r2': float(train_r2),
                 'epochs_trained': epochs,
-                'final_loss': history.history['loss'][-1],
-                'final_val_loss': history.history['val_loss'][-1] if 'val_loss' in history.history else None
+                'final_loss': float(history.history['loss'][-1]),
+                'final_val_loss': float(history.history['val_loss'][-1]) if 'val_loss' in history.history else None
             }
             
             if X_test is not None and y_test is not None:
                 test_rmse = np.sqrt(mean_squared_error(y_test, test_pred))
                 test_r2 = r2_score(y_test, test_pred) * 100
                 
+                # Get next price (inverse-scaled)
+                last_pred = test_pred[-1][0]
+                if 'Close' in self.scalers:
+                    last_pred = self.scalers['Close'].inverse_transform([[last_pred]])[0][0]
+                
                 results.update({
-                    'test_rmse': test_rmse,
-                    'test_r2': test_r2,
-                    'rmse': test_rmse,
-                    'accuracy': test_r2
+                    'test_rmse': float(test_rmse),
+                    'test_r2': float(test_r2),
+                    'rmse': float(test_rmse),
+                    'accuracy': float(test_r2),
+                    'next_price': float(last_pred),
+                    'confidence': float(test_r2)
                 })
             else:
+                # Get next price (inverse-scaled)
+                last_pred = train_pred[-1][0]
+                if 'Close' in self.scalers:
+                    last_pred = self.scalers['Close'].inverse_transform([[last_pred]])[0][0]
+                
                 results.update({
-                    'rmse': train_rmse,
-                    'accuracy': train_r2
+                    'rmse': float(train_rmse),
+                    'accuracy': float(train_r2),
+                    'next_price': float(last_pred),
+                    'confidence': float(train_r2)
                 })
             
             # Store trained model
@@ -163,7 +191,15 @@ class DeepLearningModels:
             
         except Exception as e:
             st.error(f"Error training {model_name}: {str(e)}")
-            return None
+            return {
+                'error': str(e),
+                'model_name': model_name,
+                'category': 'Deep Learning Models',
+                'next_price': 0.0,
+                'accuracy': 0.0,
+                'confidence': 0.0,
+                'rmse': float('inf')
+            }
     
     def _build_model(self, model_name, input_shape):
         """Build specific model architecture"""
@@ -198,7 +234,6 @@ class DeepLearningModels:
                 model.add(Dense(1))
                 
             elif model_name == 'Simple Neural Network':
-                # Flatten for simple NN
                 model.add(Flatten(input_shape=input_shape[1:]))
                 model.add(Dense(50, activation='relu'))
                 model.add(Dropout(0.2))
@@ -252,6 +287,100 @@ class DeepLearningModels:
         except Exception as e:
             st.error(f"Error predicting with {model_name}: {str(e)}")
             return None
+    
+    def train_and_predict(self, data, model_name, **kwargs):
+        """
+        Train a deep learning model and predict next price
+        
+        Args:
+            data (DataFrame): Input data with Close column
+            model_name (str): Name of the model to train
+            **kwargs: Additional parameters (e.g., sequence_length, epochs)
+            
+        Returns:
+            dict: Training results with predictions and metrics
+        """
+        try:
+            if not TENSORFLOW_AVAILABLE:
+                return {
+                    'error': 'TensorFlow not available',
+                    'model_name': model_name,
+                    'category': 'Deep Learning Models',
+                    'next_price': 0.0,
+                    'accuracy': 0.0,
+                    'confidence': 0.0,
+                    'rmse': float('inf')
+                }
+            
+            if model_name not in self.available_models['Deep Learning Models']:
+                return {
+                    'error': f'Model {model_name} not found',
+                    'model_name': model_name,
+                    'category': 'Deep Learning Models',
+                    'next_price': 0.0,
+                    'accuracy': 0.0,
+                    'confidence': 0.0,
+                    'rmse': float('inf')
+                }
+            
+            # Prepare data
+            sequence_length = kwargs.get('sequence_length', 60)
+            X, y, scaler = self.prepare_sequences(data, sequence_length=sequence_length)
+            if X is None or y is None or scaler is None:
+                return {
+                    'error': 'Could not prepare data',
+                    'model_name': model_name,
+                    'category': 'Deep Learning Models',
+                    'next_price': 0.0,
+                    'accuracy': 0.0,
+                    'confidence': 0.0,
+                    'rmse': float('inf')
+                }
+            
+            # Split data
+            X_train, X_test, y_train, y_test = train_test_split(
+                X, y, test_size=0.2, random_state=42, shuffle=False
+            )
+            
+            # Train model
+            results = self.train_model(
+                model_name,
+                X_train,
+                y_train,
+                X_test=X_test,
+                y_test=y_test,
+                epochs=kwargs.get('epochs', 50),
+                batch_size=kwargs.get('batch_size', 32)
+            )
+            
+            if 'error' in results:
+                return results
+            
+            # Predict next price using last sequence
+            last_sequence = X[-1]
+            next_price = self.predict_next_price(model_name, last_sequence)
+            if next_price is None:
+                next_price = results['next_price']  # Fallback to train_model's prediction
+            
+            # Update results with next_price
+            results.update({
+                'next_price': float(next_price),
+                'confidence': results.get('confidence', results['accuracy'])
+            })
+            
+            return results
+            
+        except Exception as e:
+            st.error(f"Error in train_and_predict for {model_name}: {str(e)}")
+            return {
+                'error': str(e),
+                'model_name': model_name,
+                'category': 'Deep Learning Models',
+                'next_price': 0.0,
+                'accuracy': 0.0,
+                'confidence': 0.0,
+                'rmse': float('inf')
+            }
     
     def get_model_performance(self, model_name):
         """Get performance metrics for a specific model"""

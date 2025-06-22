@@ -646,13 +646,7 @@ def display_ml_predictions_tab(data):
                     # Prediction chart
                     if 'predictions' in model_results:
                         fig = go.Figure()
-                        fig.add_trace(go.Scatter(
-                            x=data.index[-len(model_results['predictions']):],
-                            y=data['Close'].iloc[-len(model_results['predictions']):],
-                            mode='lines',
-                            name='Actual',
-                            line=dict(color='blue')
-                        ))
+                        
                         # Plot actual prices
                         fig.add_trace(go.Scatter(x=data.index, y=data['Close'], name='Actual Price'))
                         # Highlight anomalies as red dots

@@ -626,7 +626,7 @@ def display_ml_predictions_tab(data):
             try:
                 # Train model and make predictions
                 model_results = model_manager.train_and_predict(
-                    data, selected_category, selected_model
+                data, selected_category, selected_model, sequence_length=60, epochs=100
                 )
                 
                 if model_results:

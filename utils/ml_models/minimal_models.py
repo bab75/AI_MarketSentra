@@ -188,7 +188,7 @@ class MinimalModelManager:
                 'rmse': float('inf')
             }
     
-        def _prepare_features(self, data, lookback=5):
+    def _prepare_features(self, data, lookback=5):
         """Prepare features for ML models"""
         try:
             features_df = data[['Open', 'High', 'Low', 'Close', 'Volume']].dropna()

@@ -653,12 +653,18 @@ def display_ml_predictions_tab(data):
                             name='Actual',
                             line=dict(color='blue')
                         ))
+                        # Plot actual prices
+                        fig.add_trace(go.Scatter(x=data.index, y=data['Close'], name='Actual Price'))
+                        # Highlight anomalies as red dots
+                        anomaly_mask = np.array(model_results['predictions']) == -1
+                        anomaly_dates = data.index[anomaly_mask]
+                        anomaly_prices = data['Close'][anomaly_mask]
                         fig.add_trace(go.Scatter(
-                            x=data.index[-len(model_results['predictions']):],
-                            y=model_results['predictions'],
-                            mode='lines',
-                            name='Predicted',
-                            line=dict(color='red', dash='dash')
+                            x=anomaly_dates, 
+                            y=anomaly_prices,
+                            mode='markers',
+                            marker=dict(color='red', size=8),
+                            name='Anomalies Detected'
                         ))
                         
                         fig.update_layout(

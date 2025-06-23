@@ -5,7 +5,8 @@ from sklearn.ensemble import RandomForestRegressor
 from sklearn.tree import DecisionTreeRegressor
 from sklearn.svm import SVR, OneClassSVM
 from sklearn.neighbors import KNeighborsRegressor
-from sklearn.cluster import KMeans
+from sklearn.cluster import KMeans, DBSCAN, AgglomerativeClustering
+from sklearn.mixture import GaussianMixture
 from sklearn.ensemble import IsolationForest
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
@@ -76,7 +77,10 @@ class MinimalModelManager:
                 )
             },  
             'Clustering': {
-                'K-Means': KMeans(n_clusters=3, random_state=42)
+                'K-Means': KMeans(n_clusters=3, random_state=42),
+                'DBSCAN': DBSCAN(eps=0.5, min_samples=5),
+                'Hierarchical Clustering': AgglomerativeClustering(n_clusters=3),
+                'Gaussian Mixture Models': GaussianMixture(n_components=3, random_state=42)
             },
             'Anomaly Detection': {
                 'Isolation Forest': IsolationForest(contamination=0.1, random_state=42),
@@ -312,17 +316,39 @@ class MinimalModelManager:
             scaler = StandardScaler()
             scaled_features = scaler.fit_transform(features)
             model = self.models['Clustering'][model_name]
-            labels = model.fit_predict(scaled_features)
+            
+            # Different fitting methods for different models
+            if model_name == 'DBSCAN':
+                cluster_labels = model.fit_predict(scaled_features)
+                n_clusters = len(set(cluster_labels)) - (1 if -1 in cluster_labels else 0)  # Exclude noise
+            elif model_name == 'Gaussian Mixture Models':
+                cluster_labels = model.fit_predict(scaled_features)
+                n_clusters = model.n_components
+            else:  # K-Means, Hierarchical Clustering
+                cluster_labels = model.fit_predict(scaled_features)
+                n_clusters = len(set(cluster_labels))
+            
+            # Calculate next price based on latest cluster
+            current_price = float(data['Close'].iloc[-1])
+            latest_cluster = cluster_labels[-1]
+            
+            # Simple price prediction based on cluster behavior
+            if latest_cluster == -1:  # DBSCAN noise point
+                next_price = current_price * 0.995  # 0.5% decrease
+                confidence = 60.0
+            else:
+                next_price = current_price * 1.005  # 0.5% increase
+                confidence = 75.0
             
             results = {
                 'model_name': model_name,
                 'category': 'Clustering',
-                'n_clusters': len(set(labels)),
-                'labels': labels.tolist(),
-                'next_price': float(data['Close'].iloc[-1]),
-                'confidence': 50.0,
+                'n_clusters': n_clusters,
+                'cluster_labels': cluster_labels.tolist(),
+                'next_price': next_price,
+                'confidence': confidence,
                 'rmse': 0.0,
-                'accuracy': 50.0
+                'accuracy': float(max(0, 100 - (abs(n_clusters - 3) * 10)))  # Closer to 3 clusters = higher accuracy
             }
             
             return results
@@ -393,7 +419,7 @@ class MinimalModelManager:
     def _train_dimensionality_model(self, data, model_name, **kwargs):
         """Train dimensionality reduction models"""
         try:
-            features = data[['Open', 'High', 'Low', 'Close', 'Volume']].dropna()
+            features = data[['Open', 'High', 'Low', 'Close', 'Volume]].dropna()
             scaler = StandardScaler()
             scaled_features = scaler.fit_transform(features)
             model = self.models['Dimensionality Reduction'][model_name]

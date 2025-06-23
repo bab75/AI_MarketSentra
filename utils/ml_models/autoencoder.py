@@ -8,31 +8,27 @@ class AutoencoderModel:
         self.scaler = None
         
     def train_and_predict(self, data, **kwargs):
-        """Train autoencoder and predict next price using scikit-learn"""
+        """Train autoencoder and predict next price using scikit-learn PCA approach"""
         try:
             from sklearn.preprocessing import MinMaxScaler
             from sklearn.decomposition import PCA
-            from sklearn.ensemble import IsolationForest
             
             # Prepare data
             features = data[['Open', 'High', 'Low', 'Close', 'Volume']].dropna()
             scaler = MinMaxScaler()
             scaled_data = scaler.fit_transform(features)
             
-            # Use PCA as a simple autoencoder-like dimensionality reduction
-            # Reduce to 2 components (bottleneck) then reconstruct
-            pca_encoder = PCA(n_components=2)
-            encoded = pca_encoder.fit_transform(scaled_data)
-            
-            # Reconstruct by inverse transform
-            reconstructed = pca_encoder.inverse_transform(encoded)
+            # Use PCA as autoencoder (encode to 2D, then reconstruct)
+            pca = PCA(n_components=2)
+            encoded = pca.fit_transform(scaled_data)
+            reconstructed = pca.inverse_transform(encoded)
             
             # Calculate reconstruction errors
             errors = np.mean(np.square(scaled_data - reconstructed), axis=1)
-            threshold = np.percentile(errors, 90)  # Top 10% as anomalies
+            threshold = np.percentile(errors, 90)
             anomalies = errors > threshold
             
-            # Create predictions array
+            # Create predictions array (-1 for anomaly, +1 for normal)
             predictions = [-1 if anom else 1 for anom in anomalies]
             
             # Calculate metrics
@@ -41,9 +37,8 @@ class AutoencoderModel:
             total_points = len(anomalies)
             anomaly_rate = (n_anomalies / total_points) * 100.0
             accuracy = 100.0 - anomaly_rate
-            rmse_value = np.sqrt(np.mean(errors))
             
-            # Price prediction based on latest prediction
+            # Price prediction
             latest_prediction = predictions[-1]
             if latest_prediction == -1:
                 next_price = current_price * 0.97  # 3% decrease for anomaly
@@ -60,7 +55,7 @@ class AutoencoderModel:
                 'predictions': predictions,
                 'next_price': float(next_price),
                 'confidence': float(confidence),
-                'rmse': float(rmse_value),
+                'rmse': float(np.sqrt(np.mean(errors))),
                 'accuracy': float(accuracy)
             }
             

@@ -5,8 +5,7 @@ from sklearn.ensemble import RandomForestRegressor
 from sklearn.tree import DecisionTreeRegressor
 from sklearn.svm import SVR, OneClassSVM
 from sklearn.neighbors import KNeighborsRegressor
-from sklearn.cluster import KMeans, DBSCAN, AgglomerativeClustering
-from sklearn.mixture import GaussianMixture
+from sklearn.cluster import KMeans
 from sklearn.ensemble import IsolationForest
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
@@ -77,10 +76,7 @@ class MinimalModelManager:
                 )
             },  
             'Clustering': {
-                'K-Means': KMeans(n_clusters=3, random_state=42),
-                'DBSCAN': DBSCAN(eps=0.5, min_samples=5),
-                'Hierarchical Clustering': AgglomerativeClustering(n_clusters=3),
-                'Gaussian Mixture Models': GaussianMixture(n_components=3, random_state=42)
+                'K-Means': KMeans(n_clusters=3, random_state=42)
             },
             'Anomaly Detection': {
                 'Isolation Forest': IsolationForest(contamination=0.1, random_state=42),
@@ -316,39 +312,17 @@ class MinimalModelManager:
             scaler = StandardScaler()
             scaled_features = scaler.fit_transform(features)
             model = self.models['Clustering'][model_name]
-            
-            # Different fitting methods for different models
-            if model_name == 'DBSCAN':
-                cluster_labels = model.fit_predict(scaled_features)
-                n_clusters = len(set(cluster_labels)) - (1 if -1 in cluster_labels else 0)  # Exclude noise
-            elif model_name == 'Gaussian Mixture Models':
-                cluster_labels = model.fit_predict(scaled_features)
-                n_clusters = model.n_components
-            else:  # K-Means, Hierarchical Clustering
-                cluster_labels = model.fit_predict(scaled_features)
-                n_clusters = len(set(cluster_labels))
-            
-            # Calculate next price based on latest cluster
-            current_price = float(data['Close'].iloc[-1])
-            latest_cluster = cluster_labels[-1]
-            
-            # Simple price prediction based on cluster behavior
-            if latest_cluster == -1:  # DBSCAN noise point
-                next_price = current_price * 0.995  # 0.5% decrease
-                confidence = 60.0
-            else:
-                next_price = current_price * 1.005  # 0.5% increase
-                confidence = 75.0
+            labels = model.fit_predict(scaled_features)
             
             results = {
                 'model_name': model_name,
                 'category': 'Clustering',
-                'n_clusters': n_clusters,
-                'cluster_labels': cluster_labels.tolist(),
-                'next_price': next_price,
-                'confidence': confidence,
+                'n_clusters': len(set(labels)),
+                'labels': labels.tolist(),
+                'next_price': float(data['Close'].iloc[-1]),
+                'confidence': 50.0,
                 'rmse': 0.0,
-                'accuracy': float(max(0, 100 - (abs(n_clusters - 3) * 10)))  # Closer to 3 clusters = higher accuracy
+                'accuracy': 50.0
             }
             
             return results
@@ -434,7 +408,7 @@ class MinimalModelManager:
                 'next_price': float(data['Close'].iloc[-1]),
                 'confidence': 50.0,
                 'rmse': 0.0,
-                'accuracy': float(np.sum(model.explained_variance_ratio_) * 100)
+                'accuracy': float(np.sum(model.explained_variance_ratio_)) * 100
             }
             
             return results
@@ -461,7 +435,7 @@ class MinimalModelManager:
                 return {
                     'model_name': 'SARIMA',
                     'category': 'Time Series Specialized',
-                    'next_price': float(next_price),
+                    'next_price': next_price,
                     'confidence': 75.0,
                     'accuracy': 75.0,
                     'rmse': 0.05
@@ -472,17 +446,17 @@ class MinimalModelManager:
                 return {
                     'model_name': 'ARIMA',
                     'category': 'Time Series Specialized',
-                    'next_price': float(next_price),
+                    'next_price': next_price,
                     'confidence': 80.0,
                     'accuracy': 80.0,
                     'rmse': 0.04
                 }
             elif model_name == 'Exponential Smoothing':
-                next_price = current_price * 1.01  # 1% increase prediction
+                next_price = current_price * 1.01  # 1% increase prediction  
                 return {
                     'model_name': 'Exponential Smoothing',
                     'category': 'Time Series Specialized',
-                    'next_price': float(next_price),
+                    'next_price': next_price,
                     'confidence': 70.0,
                     'accuracy': 70.0,
                     'rmse': 0.03
@@ -491,32 +465,16 @@ class MinimalModelManager:
                 next_price = current_price * 1.005  # 0.5% increase prediction
                 return {
                     'model_name': 'Hidden Markov Models',
-                    'category': 'Time Series Specialized',
-                    'next_price': float(next_price),
+                    'category': 'Time Series Specialized', 
+                    'next_price': next_price,
                     'confidence': 65.0,
                     'accuracy': 65.0,
                     'rmse': 0.02
                 }
             else:
-                return {
-                    'error': f'Time series model {model_name} not implemented',
-                    'model_name': model_name,
-                    'category': 'Time Series Specialized',
-                    'next_price': 0.0,
-                    'confidence': 0.0,
-                    'accuracy': 0.0,
-                    'rmse': float('inf')
-                }
+                return {'error': f'Time series model {model_name} not implemented'}
         except Exception as e:
-            return {
-                'error': f'Time series error: {str(e)}',
-                'model_name': model_name,
-                'category': 'Time Series Specialized',
-                'next_price': 0.0,
-                'confidence': 0.0,
-                'accuracy': 0.0,
-                'rmse': float('inf')
-            }
+            return {'error': f'Time series error: {str(e)}'}
     
     def get_global_performances(self):
         """Get all model performances"""

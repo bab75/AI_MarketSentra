@@ -37,12 +37,18 @@ class AutoencoderModel:
             threshold = np.percentile(errors, 90)
             anomalies = errors > threshold
             
-            # Create predictions array (-1 for anomaly, +1 for normal) - SAME FORMAT as other models
-            predictions = np.where(anomalies, -1, 1)
+            # Create predictions array - SAFER APPROACH
+            predictions = []
+            for anomaly in anomalies:
+                if anomaly:
+                    predictions.append(-1)  # Anomaly
+                else:
+                    predictions.append(1)   # Normal
+            predictions = np.array(predictions)
             
             # Predict next price
             current_price = float(data['Close'].iloc[-1])
-            latest_prediction = predictions[-1]  # Last prediction (-1 or +1)
+            latest_prediction = predictions[-1]
             
             if latest_prediction == -1:  # Anomaly detected
                 next_price = current_price * 0.97  # 3% decrease
@@ -51,20 +57,27 @@ class AutoencoderModel:
                 next_price = current_price * 1.02  # 2% increase
                 confidence = 85.0
                 
-            # Return SAME KEYS as other anomaly models
+            # Calculate metrics safely
+            n_anomalies = int(sum(anomalies))
+            anomaly_rate = float((n_anomalies / len(anomalies)) * 100)
+            accuracy = float(100 - anomaly_rate)
+            rmse = float(np.sqrt(np.mean(errors)))
+                
             return {
                 'model_name': 'Autoencoder',
                 'category': 'Anomaly Detection',
-                'n_anomalies': int(np.sum(anomalies)),
-                'anomaly_rate': float(np.mean(anomalies) * 100),
-                'predictions': predictions.tolist(),  # KEY for chart display
+                'n_anomalies': n_anomalies,
+                'anomaly_rate': anomaly_rate,
+                'predictions': predictions.tolist(),
                 'next_price': next_price,
                 'confidence': confidence,
-                'rmse': float(np.sqrt(np.mean(errors))),
-                'accuracy': float(100 - (np.mean(anomalies) * 100))
+                'rmse': rmse,
+                'accuracy': accuracy
             }
             
         except Exception as e:
+            # Add debug info to see what's failing
+            st.error(f"Autoencoder error details: {str(e)}")
             return {
                 'error': f'Autoencoder error: {str(e)}',
                 'model_name': 'Autoencoder',

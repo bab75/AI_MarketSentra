@@ -37,25 +37,31 @@ class AutoencoderModel:
             threshold = np.percentile(errors, 90)
             anomalies = errors > threshold
             
+            # Create predictions array (-1 for anomaly, +1 for normal) - SAME FORMAT as other models
+            predictions = np.where(anomalies, -1, 1)
+            
             # Predict next price
             current_price = float(data['Close'].iloc[-1])
-            latest_error = errors[-1]
+            latest_prediction = predictions[-1]  # Last prediction (-1 or +1)
             
-            if latest_error > threshold:
-                next_price = current_price * 0.97  # 3% decrease for anomaly
+            if latest_prediction == -1:  # Anomaly detected
+                next_price = current_price * 0.97  # 3% decrease
                 confidence = 70.0
-            else:
-                next_price = current_price * 1.02  # 2% increase for normal
+            else:  # Normal behavior
+                next_price = current_price * 1.02  # 2% increase
                 confidence = 85.0
                 
+            # Return SAME KEYS as other anomaly models
             return {
                 'model_name': 'Autoencoder',
                 'category': 'Anomaly Detection',
+                'n_anomalies': int(np.sum(anomalies)),
+                'anomaly_rate': float(np.mean(anomalies) * 100),
+                'predictions': predictions.tolist(),  # KEY for chart display
                 'next_price': next_price,
                 'confidence': confidence,
-                'accuracy': float(100 - (np.mean(anomalies) * 100)),
                 'rmse': float(np.sqrt(np.mean(errors))),
-                'n_anomalies': int(np.sum(anomalies))
+                'accuracy': float(100 - (np.mean(anomalies) * 100))
             }
             
         except Exception as e:

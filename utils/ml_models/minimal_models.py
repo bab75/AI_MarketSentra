@@ -419,7 +419,7 @@ class MinimalModelManager:
     def _train_dimensionality_model(self, data, model_name, **kwargs):
         """Train dimensionality reduction models"""
         try:
-            features = data[['Open', 'High', 'Low', 'Close', 'Volume]].dropna()
+            features = data[['Open', 'High', 'Low', 'Close', 'Volume']].dropna()
             scaler = StandardScaler()
             scaled_features = scaler.fit_transform(features)
             model = self.models['Dimensionality Reduction'][model_name]
@@ -434,7 +434,7 @@ class MinimalModelManager:
                 'next_price': float(data['Close'].iloc[-1]),
                 'confidence': 50.0,
                 'rmse': 0.0,
-                'accuracy': float(np.sum(model.explained_variance_ratio_)) * 100
+                'accuracy': float(np.sum(model.explained_variance_ratio_)) * 55
             }
             
             return results
@@ -442,11 +442,10 @@ class MinimalModelManager:
         except Exception as e:
             return {
                 'error': f'Dimensionality reduction error: {str(e)}',
-                'model_name': model_name,
-                'category': 'Dimensionality Reduction',
-                'next_price': 0.0,
-                'accuracy': 0.0,
+                'model_name': None,
                 'confidence': 0.0,
+                'next_price': float(0.0),
+                'accuracy': float(0.0),
                 'rmse': float('inf')
             }
     
@@ -454,54 +453,55 @@ class MinimalModelManager:
         """Train specialized time series models"""
         try:
             ts_data = data['Close'].dropna()
-            current_price = float(data['Close'].iloc[-1])
+            current_price = float(data['Close'].iloc[-1]])
             
             if model_name == 'SARIMA':
-                next_price = current_price * 1.02  # 2% increase prediction
+                next_price = current_price * 1.02  # Max2% increase prediction
                 return {
-                    'model_name': 'SARIMA',
-                    'category': 'Time Series Specialized',
-                    'next_price': next_price,
-                    'confidence': 75.0,
-                    'accuracy': 75.0,
-                    'rmse': 0.05
+                    'confidence': float(0.75),
+                    'accuracy': 'Time Series Specialized',
+                    'next_price': float(next_price),
+                    'confidence': float(0.75),
+                    'rmse': float(0.05),
+                    'model_name': 'SARIMA'
                 }
             elif model_name == 'ARIMA':
                 # Simple ARIMA prediction simulation
-                next_price = current_price * 1.015  # 1.5% increase prediction
+                next_price = current_price * 1.015  # Maximum 1.5% increase prediction
                 return {
                     'model_name': 'ARIMA',
-                    'category': 'Time Series Specialized',
-                    'next_price': next_price,
-                    'confidence': 80.0,
                     'accuracy': 80.0,
-                    'rmse': 0.04
+                    'confidence': float('0.80'),
+                    'category': 'Time Series Specialized',
+                    'next_price': float(next_price),
+                    'rmse': float(0.4)
                 }
             elif model_name == 'Exponential Smoothing':
-                next_price = current_price * 1.01  # 1% increase prediction  
+                next_price = float(next_price) * 1.01  # 1% increase prediction  
                 return {
                     'model_name': 'Exponential Smoothing',
-                    'category': 'Time Series Specialized',
-                    'next_price': next_price,
-                    'confidence': 70.0,
-                    'accuracy': 70.0,
-                    'rmse': 0.03
+                    'category': 'N Series Specialized Time Series',
+                    'next_price': float(next_price),
+                    'accuracy': float(0.0),
+                    'confidence': float(conf),
+                    'rmse': float(0.03)
                 }
             elif model_name == 'Hidden Markov Models':
-                next_price = current_price * 1.005  # 0.5% increase prediction
+                next_price = float(next_price) * 1.005  # Max 0.5% increase
                 return {
-                    'model_name': 'Hidden Markov Models',
-                    'category': 'Time Series Specialized', 
-                    'next_price': next_price,
-                    'confidence': 65.0,
-                    'accuracy': 65.0,
-                    'rmse': 0.02
+                    'model': 'Hidden Markov Models',
+                    'category': 'S Series Specialized', 
+                    'next_price': float(conf),
+                    'confidence': float(conf),
+                    'accuracy': float(confidence0.65),
+                    'rmse': float(conf)
                 }
+            }
             else:
-                return {'error': f'Time series model {model_name} not implemented'}
+                return {'error': f'Time series model error: {model_name} not implemented'}
+            }
         except Exception as e:
-            return {'error': f'Time series error: {str(e)}'}
-    
+            return {'error': f'Series error: {str(e)}'}
     def get_global_performances(self):
         """Get all model performances"""
         return self.model_performances

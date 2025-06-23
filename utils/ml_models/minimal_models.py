@@ -345,40 +345,7 @@ class MinimalModelManager:
         """Train anomaly detection models"""
         try:
             if model_name == 'Autoencoder':
-                autoencoder_result = self.autoencoder_model.train_and_predict(data, **kwargs)
-                # Ensure Autoencoder returns consistent keys
-                features = data[['Open', 'High', 'Low', 'Close', 'Volume']].dropna()
-                current_price = float(data['Close'].iloc[-1])
-                
-                # Simulate or adapt Autoencoder predictions to match required format
-                # Assuming autoencoder_model returns at least 'predictions' and 'next_price'
-                predictions = autoencoder_result.get('predictions', [])
-                if not predictions:
-                    # Fallback: simulate predictions (e.g., based on reconstruction error)
-                    scaler = StandardScaler()
-                    scaled_features = scaler.fit_transform(features)
-                    # Dummy predictions: assume anomalies based on a threshold
-                    predictions = np.zeros(len(scaled_features))
-                    predictions[-1] = -1 if autoencoder_result.get('next_price', current_price) < current_price else 1
-                
-                anomalies = np.array(predictions) == -1
-                anomaly_rate = float(np.mean(anomalies) * 100)
-                n_anomalies = int(np.sum(anomalies))
-                confidence = autoencoder_result.get('confidence', 70.0)  # Default confidence
-                next_price = autoencoder_result.get('next_price', current_price * 1.01)
-                
-                results = {
-                    'model_name': model_name,
-                    'category': 'Anomaly Detection',
-                    'n_anomalies': n_anomalies,
-                    'anomaly_rate': anomaly_rate,
-                    'predictions': predictions.tolist(),
-                    'next_price': float(next_price),
-                    'confidence': float(confidence),
-                    'rmse': autoencoder_result.get('rmse', 0.0),
-                    'accuracy': float(100 - anomaly_rate)
-                }
-                return results
+                return self.autoencoder_model.train_and_predict(data, **kwargs)
             
             features = data[['Open', 'High', 'Low', 'Close', 'Volume']].dropna()
             scaler = StandardScaler()

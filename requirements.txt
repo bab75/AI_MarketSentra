@@ -1,18 +1,18 @@
 streamlit>=1.46.0
 pandas>=2.2.0
-numpy>=2.1.0
+numpy==1.26.4
 plotly>=5.24.1
 yfinance>=0.2.63
-scikit-learn<=1.5.1
-scipy>=1.15.0
+scikit-learn==1.5.1
+scipy>=1.11.4
 openpyxl>=3.1.5
 ta>=0.11.0
 statsmodels>=0.14.4
 pyyaml>=6.0.2
 joblib>=1.4.2
 xgboost
-lightgbm>=4.0.0
-catboost>=1.2.0
-tensorflow>=2.19.0
-hmmlearn>=0.3.0      # For Hidden Markov Models
-pmdarima>=2.0.4  
+lightgbm==3.3.5
+catboost==1.2.2
+tensorflow==2.13.0
+hmmlearn==0.2.8
+pmdarima>=2.0.4
